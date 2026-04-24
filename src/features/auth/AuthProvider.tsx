@@ -30,49 +30,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  function resetUserAccess() {
+    setProfile(null);
+    setRoles([]);
+  }
+
   async function loadUserAccess(userId: string) {
-    const [profileResponse, userRolesResponse, rolesResponse] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
-      supabase.from("user_roles").select("role_id").eq("user_id", userId),
-      supabase.from("roles").select("id, code")
-    ]);
+    try {
+      const [profileResponse, userRolesResponse, rolesResponse] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+        supabase.from("user_roles").select("role_id").eq("user_id", userId),
+        supabase.from("roles").select("id, code")
+      ]);
 
-    setProfile((profileResponse.data as Profile | null) ?? null);
+      setProfile((profileResponse.data as Profile | null) ?? null);
 
-    const roleCodeById = new Map((rolesResponse.data ?? []).map((role) => [role.id, role.code]));
-    const nextRoles = (userRolesResponse.data ?? [])
-      .map((userRole) => roleCodeById.get(userRole.role_id))
-      .filter(Boolean) as string[];
+      const roleCodeById = new Map((rolesResponse.data ?? []).map((role) => [role.id, role.code]));
+      const nextRoles = (userRolesResponse.data ?? [])
+        .map((userRole) => roleCodeById.get(userRole.role_id))
+        .filter(Boolean) as string[];
 
-    setRoles(nextRoles);
+      setRoles(nextRoles);
+    } catch (_error) {
+      resetUserAccess();
+    }
   }
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      if (data.session?.user?.id) {
-        await loadUserAccess(data.session.user.id);
-      } else {
-        setProfile(null);
-        setRoles([]);
+    async function bootstrapSession() {
+      try {
+        const {
+          data: { session: currentSession }
+        } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+
+        setSession(currentSession);
+
+        if (currentSession?.user?.id) {
+          await loadUserAccess(currentSession.user.id);
+        } else {
+          resetUserAccess();
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
-    });
+    }
+
+    bootstrapSession();
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
-      if (nextSession?.user?.id) {
-        await loadUserAccess(nextSession.user.id);
-      } else {
-        setProfile(null);
-        setRoles([]);
-      }
       setLoading(false);
+
+      // Avoid awaiting extra Supabase calls inside the auth callback to prevent
+      // production hangs during session changes.
+      queueMicrotask(() => {
+        void (async () => {
+          if (nextSession?.user?.id) {
+            await loadUserAccess(nextSession.user.id);
+          } else {
+            resetUserAccess();
+          }
+        })();
+      });
     });
 
     return () => {
@@ -110,6 +137,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hasRole: (role: string) => roles.includes(role),
       signOut: async () => {
         await supabase.auth.signOut();
+        setSession(null);
+        resetUserAccess();
+        setLoading(false);
         router.replace("/login");
       }
     }),
