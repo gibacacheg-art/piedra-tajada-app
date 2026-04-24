@@ -8,9 +8,15 @@ import { supabase } from "@/lib/supabase";
 export function ProfileSettings() {
   const { user } = useAuth();
   const [message, setMessage] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [form, setForm] = useState({
     full_name: "",
     phone: ""
+  });
+  const [passwordForm, setPasswordForm] = useState({
+    new_password: "",
+    confirm_password: ""
   });
 
   useEffect(() => {
@@ -55,6 +61,41 @@ export function ProfileSettings() {
     setMessage("Perfil actualizado correctamente.");
   }
 
+  async function updatePassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user) return;
+
+    if (passwordForm.new_password.length < 6) {
+      setPasswordMessage("La nueva contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setPasswordMessage("La confirmación no coincide con la nueva contraseña.");
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    setPasswordMessage("Actualizando contraseña...");
+
+    const { error } = await supabase.auth.updateUser({
+      password: passwordForm.new_password
+    });
+
+    setIsUpdatingPassword(false);
+
+    if (error) {
+      setPasswordMessage(`No se pudo actualizar la contraseña: ${error.message}`);
+      return;
+    }
+
+    setPasswordForm({
+      new_password: "",
+      confirm_password: ""
+    });
+    setPasswordMessage("Contraseña actualizada correctamente.");
+  }
+
   return (
     <>
       <PageHeader
@@ -89,6 +130,39 @@ export function ProfileSettings() {
           Guardar perfil
         </button>
         {message && <p className="form-message">{message}</p>}
+      </form>
+
+      <form className="panel edit-form" onSubmit={updatePassword}>
+        <h2>Cambiar contraseña</h2>
+        <p className="muted">Usa una clave nueva para tu acceso personal. Este cambio afecta solo a tu usuario.</p>
+        <label>
+          Nueva contraseña
+          <input
+            type="password"
+            autoComplete="new-password"
+            minLength={6}
+            required
+            value={passwordForm.new_password}
+            onChange={(event) => setPasswordForm((current) => ({ ...current, new_password: event.target.value }))}
+            placeholder="Nueva contraseña"
+          />
+        </label>
+        <label>
+          Confirmar nueva contraseña
+          <input
+            type="password"
+            autoComplete="new-password"
+            minLength={6}
+            required
+            value={passwordForm.confirm_password}
+            onChange={(event) => setPasswordForm((current) => ({ ...current, confirm_password: event.target.value }))}
+            placeholder="Repite la nueva contraseña"
+          />
+        </label>
+        <button className="primary-button" type="submit" disabled={isUpdatingPassword}>
+          Guardar nueva contraseña
+        </button>
+        {passwordMessage && <p className="form-message">{passwordMessage}</p>}
       </form>
     </>
   );
