@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "next-env.d.ts",
+    "src/app/layout.tsx",
+    "src/app/page.tsx",
+    "src/app/mvp/**/*.ts",
+    "src/app/mvp/**/*.tsx",
+    "src/features/social-sales/**/*.ts",
+    "src/features/social-sales/**/*.tsx"
+  ],
+  "exclude": ["node_modules"]
+}

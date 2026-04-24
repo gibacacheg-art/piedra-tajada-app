@@ -1,0 +1,6 @@
+-- Archivo informativo para compatibilidad con el prototipo anterior.
+-- En Supabase SQL Editor ejecuta estos archivos en orden:
+-- 1. supabase/schema.sql
+-- 2. supabase/rls.sql
+--
+-- El SQL real está separado para que sea más fácil revisar y mantener el esquema.
