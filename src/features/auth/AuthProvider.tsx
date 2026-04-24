@@ -3,7 +3,7 @@
 import { Session, User } from "@supabase/supabase-js";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { canAccessPath } from "@/lib/routes";
+import { canAccessPath, defaultPathForRoles } from "@/lib/routes";
 import { supabase } from "@/lib/supabase";
 import type { Profile } from "@/types/database";
 
@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accessReady, setAccessReady] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -60,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     async function bootstrapSession() {
+      setAccessReady(false);
       try {
         const {
           data: { session: currentSession }
@@ -77,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } finally {
         if (mounted) {
           setLoading(false);
+          setAccessReady(true);
         }
       }
     }
@@ -88,15 +91,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       setLoading(false);
+      setAccessReady(false);
 
       // Avoid awaiting extra Supabase calls inside the auth callback to prevent
       // production hangs during session changes.
       queueMicrotask(() => {
         void (async () => {
-          if (nextSession?.user?.id) {
-            await loadUserAccess(nextSession.user.id);
-          } else {
-            resetUserAccess();
+          try {
+            if (nextSession?.user?.id) {
+              await loadUserAccess(nextSession.user.id);
+            } else {
+              resetUserAccess();
+            }
+          } finally {
+            setAccessReady(true);
           }
         })();
       });
@@ -109,22 +117,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || !accessReady) return;
 
     const isPublic = publicRoutes.includes(pathname);
+    const defaultPath = defaultPathForRoles(roles);
 
     if (!session && !isPublic) {
       router.replace("/login");
     }
 
     if (session && pathname === "/login") {
-      router.replace("/dashboard");
+      router.replace(defaultPath);
     }
 
     if (session && !publicRoutes.includes(pathname) && !canAccessPath(pathname, roles)) {
-      router.replace("/dashboard");
+      router.replace(defaultPath);
     }
-  }, [loading, pathname, router, roles, session]);
+  }, [accessReady, loading, pathname, router, roles, session]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -132,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: session?.user ?? null,
       profile,
       roles,
-      loading,
+      loading: loading || !accessReady,
       canAccess: (targetPath: string) => canAccessPath(targetPath, roles),
       hasRole: (role: string) => roles.includes(role),
       signOut: async () => {
@@ -140,10 +149,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(null);
         resetUserAccess();
         setLoading(false);
+        setAccessReady(true);
         router.replace("/login");
       }
     }),
-    [loading, profile, roles, router, session]
+    [accessReady, loading, profile, roles, router, session]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

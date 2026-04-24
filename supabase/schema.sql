@@ -309,7 +309,8 @@ insert into public.roles (code, name, description) values
   ('admin_general', 'Administrador general', 'Control total de usuarios, roles, eventos y configuración.'),
   ('ventas', 'Ventas', 'Gestiona clientes, solicitudes, cotizaciones, pagos y reservas comerciales.'),
   ('coordinador_evento', 'Coordinador de evento', 'Coordina eventos confirmados, responsables, tareas y operación.'),
-  ('responsable_area', 'Responsable de área', 'Gestiona tareas y checklists asignados a su área o usuario.')
+  ('responsable_area', 'Responsable de área', 'Gestiona tareas y checklists asignados a su área o usuario.'),
+  ('consulta_disponibilidad', 'Consulta de disponibilidad', 'Acceso de solo lectura al calendario para revisar si un día está disponible u ocupado.')
 on conflict (code) do nothing;
 
 insert into public.event_statuses (code, label, sort_order, is_blocking) values

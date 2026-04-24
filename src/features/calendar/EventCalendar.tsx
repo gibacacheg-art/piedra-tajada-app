@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { formatDate } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import type { Event } from "@/types/database";
@@ -73,10 +74,12 @@ function dayAvailabilityLabel(dayEvents: Event[]) {
 }
 
 export function EventCalendar() {
+  const { hasRole } = useAuth();
   const [mode, setMode] = useState<CalendarMode>("month");
   const [anchorDate, setAnchorDate] = useState(new Date());
   const [events, setEvents] = useState<Event[]>([]);
   const [message, setMessage] = useState("");
+  const isAvailabilityViewer = hasRole("consulta_disponibilidad");
 
   const visibleDays = useMemo(() => (mode === "week" ? getWeekDays(anchorDate) : getMonthGrid(anchorDate)), [anchorDate, mode]);
   const range = useMemo(() => {
@@ -93,13 +96,21 @@ export function EventCalendar() {
   }, [anchorDate, mode, visibleDays]);
 
   async function loadEvents() {
-    const { data, error } = await supabase
-      .from("events")
-      .select("*, clients(full_name, phone, email, company_name)")
-      .gte("event_date", range.from)
-      .lte("event_date", range.to)
-      .order("event_date", { ascending: true })
-      .order("start_time", { ascending: true });
+    const { data, error } = isAvailabilityViewer
+      ? await supabase
+          .from("events")
+          .select("*")
+          .gte("event_date", range.from)
+          .lte("event_date", range.to)
+          .order("event_date", { ascending: true })
+          .order("start_time", { ascending: true })
+      : await supabase
+          .from("events")
+          .select("*, clients(full_name, phone, email, company_name)")
+          .gte("event_date", range.from)
+          .lte("event_date", range.to)
+          .order("event_date", { ascending: true })
+          .order("start_time", { ascending: true });
 
     if (error) {
       setMessage(`No se pudo cargar calendario: ${error.message}`);
@@ -112,7 +123,7 @@ export function EventCalendar() {
 
   useEffect(() => {
     loadEvents();
-  }, [range.from, range.to]);
+  }, [isAvailabilityViewer, range.from, range.to]);
 
   function move(direction: -1 | 1) {
     setAnchorDate((current) => {
@@ -154,7 +165,11 @@ export function EventCalendar() {
       <PageHeader
         eyebrow="Disponibilidad"
         title="Calendario de eventos"
-        description="Consulta pre-reservas, eventos confirmados y ejecución por semana, mes o rangos largos."
+        description={
+          isAvailabilityViewer
+            ? "Revisa rápido si un día está disponible u ocupado antes de confirmar disponibilidad."
+            : "Consulta pre-reservas, eventos confirmados y ejecución por semana, mes o rangos largos."
+        }
       />
 
       <section className="panel">
@@ -214,7 +229,8 @@ export function EventCalendar() {
                           <div>
                             <strong>{event.event_name}</strong>
                             <p>
-                              {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)} · {event.clients?.full_name ?? "Sin cliente"}
+                              {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)} ·{" "}
+                              {isAvailabilityViewer ? "Reservado" : event.clients?.full_name ?? "Sin cliente"}
                             </p>
                           </div>
                           <StatusBadge status={event.status} />
@@ -256,7 +272,8 @@ export function EventCalendar() {
                             <div>
                               <strong>{event.event_name}</strong>
                               <p>
-                                {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)} · {event.clients?.full_name ?? "Sin cliente"}
+                                {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)} ·{" "}
+                                {isAvailabilityViewer ? "Reservado" : event.clients?.full_name ?? "Sin cliente"}
                               </p>
                             </div>
                             <StatusBadge status={event.status} />
@@ -286,7 +303,7 @@ export function EventCalendar() {
                           <h3>{event.event_name}</h3>
                           <p className="muted">
                             {formatDate(event.event_date)} · {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)} ·{" "}
-                            {event.clients?.full_name ?? "Sin cliente"}
+                            {isAvailabilityViewer ? "Reservado" : event.clients?.full_name ?? "Sin cliente"}
                           </p>
                         </div>
                         <StatusBadge status={event.status} />

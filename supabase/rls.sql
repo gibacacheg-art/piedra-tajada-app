@@ -98,7 +98,7 @@ with check (public.current_user_has_any_role(array['admin_general','ventas']));
 
 create policy "staff read events" on public.events for select to authenticated
 using (
-  public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento'])
+  public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','consulta_disponibilidad'])
   or public.is_event_responsible(id)
   or main_responsible_id = auth.uid()
   or commercial_responsible_id = auth.uid()
