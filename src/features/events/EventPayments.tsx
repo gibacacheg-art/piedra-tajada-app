@@ -17,7 +17,7 @@ import {
   uploadPaymentInvoiceDocument
 } from "./eventPaymentsSupport";
 
-export function EventPayments({ eventId }: { eventId: string }) {
+export function EventPayments({ eventId, readOnly = false }: { eventId: string; readOnly?: boolean }) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentDocuments, setPaymentDocuments] = useState<Record<string, Document[]>>({});
   const [eventSummary, setEventSummary] = useState<Pick<Event, "id" | "total_amount"> | null>(null);
@@ -305,7 +305,11 @@ export function EventPayments({ eventId }: { eventId: string }) {
       <div className="list-item-header">
         <div>
           <h2>Plan de pagos</h2>
-          <p className="muted">Ahora puedes editar una cuota puntual o rehacer el plan pendiente completo sin tocar lo ya pagado.</p>
+          <p className="muted">
+            {readOnly
+              ? "Consulta cuotas, vencimientos y facturación del evento."
+              : "Ahora puedes editar una cuota puntual o rehacer el plan pendiente completo sin tocar lo ya pagado."}
+          </p>
         </div>
         <div>
           <strong>{formatCurrency(totals.paid)} pagado</strong>
@@ -328,7 +332,8 @@ export function EventPayments({ eventId }: { eventId: string }) {
         </article>
       </section>
 
-      <form className="edit-form" onSubmit={rebuildPendingPlan} style={{ marginTop: 14 }}>
+      {!readOnly ? (
+        <form className="edit-form" onSubmit={rebuildPendingPlan} style={{ marginTop: 14 }}>
         <h3>Modificar plan pendiente</h3>
         <div className="form-grid-2">
           <label>
@@ -358,9 +363,11 @@ export function EventPayments({ eventId }: { eventId: string }) {
         <button className="primary-button" type="submit">
           Rehacer plan pendiente
         </button>
-      </form>
+        </form>
+      ) : null}
 
-      <form className="edit-form" onSubmit={addPayment} style={{ marginTop: 14 }}>
+      {!readOnly ? (
+        <form className="edit-form" onSubmit={addPayment} style={{ marginTop: 14 }}>
         <h3>Agregar cuota manual</h3>
         <div className="form-grid-2">
           <label>
@@ -396,7 +403,8 @@ export function EventPayments({ eventId }: { eventId: string }) {
         <button className="primary-button" type="submit">
           Agregar cuota
         </button>
-      </form>
+        </form>
+      ) : null}
 
       <div className="button-row" style={{ marginTop: 14 }}>
         <button className="secondary-button" type="button" onClick={() => setShowPayments((current) => !current)}>
@@ -419,21 +427,25 @@ export function EventPayments({ eventId }: { eventId: string }) {
                   </p>
                 </div>
                 <div className="button-row">
-                  {payment.status !== "paid" && (
+                  {!readOnly && payment.status !== "paid" && (
                     <button className="primary-button" type="button" onClick={() => markAsPaid(payment)}>
                       Marcar pagada
                     </button>
                   )}
-                  <button className="secondary-button" type="button" onClick={() => startEditing(payment)}>
-                    Editar cuota
-                  </button>
-                  <button className="secondary-button" type="button" onClick={() => deletePayment(payment)}>
-                    Eliminar
-                  </button>
+                  {!readOnly ? (
+                    <>
+                      <button className="secondary-button" type="button" onClick={() => startEditing(payment)}>
+                        Editar cuota
+                      </button>
+                      <button className="secondary-button" type="button" onClick={() => deletePayment(payment)}>
+                        Eliminar
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </div>
 
-            {editingId === payment.id && (
+            {editingId === payment.id && !readOnly && (
               <div className="edit-form">
                 <div className="form-grid-2">
                   <label>
@@ -499,9 +511,11 @@ export function EventPayments({ eventId }: { eventId: string }) {
                 {extractInvoiceNumber(payment) ? ` · N° ${extractInvoiceNumber(payment)}` : ""}
               </p>
               <div className="button-row">
-                <button className="secondary-button" type="button" onClick={() => startInvoiceEditing(payment)}>
-                  {isPaymentInvoiced(payment, paymentDocuments) ? "Editar facturación" : "Registrar factura"}
-                </button>
+                {!readOnly ? (
+                  <button className="secondary-button" type="button" onClick={() => startInvoiceEditing(payment)}>
+                    {isPaymentInvoiced(payment, paymentDocuments) ? "Editar facturación" : "Registrar factura"}
+                  </button>
+                ) : null}
                 {(paymentDocuments[payment.id] ?? []).map((document) => (
                   <button className="secondary-button" key={document.id} type="button" onClick={() => openDocument(document)}>
                     Abrir factura
@@ -510,7 +524,7 @@ export function EventPayments({ eventId }: { eventId: string }) {
               </div>
             </div>
 
-            {invoiceEditingId === payment.id && (
+            {invoiceEditingId === payment.id && !readOnly && (
               <div className="edit-form">
                 <label className="checkbox-option">
                   <input

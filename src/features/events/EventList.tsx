@@ -17,7 +17,7 @@ type EventWithRequestStatus = Event & {
 };
 
 export function EventList() {
-  const { hasRole } = useAuth();
+  const { hasRole, canAccess } = useAuth();
   const [events, setEvents] = useState<EventWithRequestStatus[]>([]);
   const [query, setQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -26,6 +26,7 @@ export function EventList() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const canDeleteEvents = hasRole("admin_general");
+  const canAccessTrash = canAccess("/trash");
 
   useEffect(() => {
     async function loadEvents() {
@@ -195,9 +196,11 @@ export function EventList() {
             <button className="secondary-button" type="button" onClick={() => setShowArchived((current) => !current)}>
               {showArchived ? "Ver activos" : "Ver archivados"}
             </button>
-            <Link className="secondary-button" href="/trash">
-              Papelera
-            </Link>
+            {canAccessTrash ? (
+              <Link className="secondary-button" href="/trash">
+                Papelera
+              </Link>
+            ) : null}
           </div>
         </div>
 

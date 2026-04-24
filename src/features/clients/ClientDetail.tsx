@@ -42,7 +42,7 @@ type ClientPayment = {
 };
 
 export function ClientDetail({ id }: { id: string }) {
-  const { canAccess } = useAuth();
+  const { canAccess, hasRole } = useAuth();
   const [client, setClient] = useState<Client | null>(null);
   const [clientRequests, setClientRequests] = useState<ClientRequest[]>([]);
   const [clientEvents, setClientEvents] = useState<ClientEvent[]>([]);
@@ -57,6 +57,7 @@ export function ClientDetail({ id }: { id: string }) {
     company_name: "",
     notes: ""
   });
+  const isReadOnlyViewer = hasRole("consulta_disponibilidad");
 
   async function loadClient() {
     const [clientResponse, requestsResponse, eventsResponse] = await Promise.all([
@@ -175,7 +176,8 @@ export function ClientDetail({ id }: { id: string }) {
     { id: "eventos", label: "Eventos" },
     { id: "pagos", label: "Pagos" },
     { id: "editar", label: "Editar cliente" }
-  ];
+  ].filter((section) => !isReadOnlyViewer || section.id !== "editar");
+  const currentSection = sections.some((section) => section.id === activeSection) ? activeSection : "resumen";
 
   return (
     <>
@@ -221,7 +223,7 @@ export function ClientDetail({ id }: { id: string }) {
       <nav className="section-tabs" aria-label="Secciones del cliente">
         {sections.map((section) => (
           <button
-            className={activeSection === section.id ? "primary-button" : "secondary-button"}
+            className={currentSection === section.id ? "primary-button" : "secondary-button"}
             key={section.id}
             type="button"
             onClick={() => setActiveSection(section.id)}
@@ -231,7 +233,7 @@ export function ClientDetail({ id }: { id: string }) {
         ))}
       </nav>
 
-      {activeSection === "resumen" && (
+      {currentSection === "resumen" && (
         <section className="panel" style={{ marginTop: 14 }}>
           <div className="grid-3">
             <article className="stat-card">
@@ -255,7 +257,7 @@ export function ClientDetail({ id }: { id: string }) {
         </section>
       )}
 
-      {activeSection === "solicitudes" && (
+      {currentSection === "solicitudes" && (
         <section className="panel" style={{ marginTop: 14 }}>
           <h2>Solicitudes del cliente</h2>
           <div className="list" style={{ marginTop: 14 }}>
@@ -296,7 +298,7 @@ export function ClientDetail({ id }: { id: string }) {
         </section>
       )}
 
-      {activeSection === "eventos" && (
+      {currentSection === "eventos" && (
         <section className="panel" style={{ marginTop: 14 }}>
           <h2>Eventos del cliente</h2>
           <div className="list" style={{ marginTop: 14 }}>
@@ -328,7 +330,7 @@ export function ClientDetail({ id }: { id: string }) {
         </section>
       )}
 
-      {activeSection === "pagos" && (
+      {currentSection === "pagos" && (
         <section className="panel" style={{ marginTop: 14 }}>
           <div className="list-item-header">
             <h2>Pagos relacionados</h2>
@@ -367,7 +369,7 @@ export function ClientDetail({ id }: { id: string }) {
         </section>
       )}
 
-      {activeSection === "editar" && (
+      {currentSection === "editar" && !isReadOnlyViewer && (
         <section className="panel" style={{ marginTop: 14 }}>
           <h2>Editar cliente</h2>
           <form className="edit-form" onSubmit={saveClientChanges}>

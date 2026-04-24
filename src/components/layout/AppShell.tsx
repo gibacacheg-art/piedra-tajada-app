@@ -11,7 +11,7 @@ const roleLabels: Record<string, string> = {
   ventas: "Ventas",
   coordinador_evento: "Coordinador de evento",
   responsable_area: "Responsable de área",
-  consulta_disponibilidad: "Consulta de disponibilidad"
+  consulta_disponibilidad: "Consulta general"
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {

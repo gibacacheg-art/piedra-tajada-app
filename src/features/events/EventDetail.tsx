@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { formatCurrency, formatDate, statusLabel } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import type { Event } from "@/types/database";
@@ -61,6 +62,7 @@ function activityActionLabel(value: string) {
 }
 
 export function EventDetail({ id }: { id: string }) {
+  const { hasRole } = useAuth();
   const [event, setEvent] = useState<Event | null>(null);
   const [requestSummary, setRequestSummary] = useState<EventRequestSummary | null>(null);
   const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>([]);
@@ -90,6 +92,7 @@ export function EventDetail({ id }: { id: string }) {
     payments: true,
     quote: false
   });
+  const isReadOnlyViewer = hasRole("consulta_disponibilidad");
   const [form, setForm] = useState({
     event_name: "",
     status: "pre_reserved",
@@ -270,7 +273,7 @@ export function EventDetail({ id }: { id: string }) {
 
           <div className="button-row" style={{ marginTop: 14 }}>
             <button className="secondary-button" type="button" onClick={() => setActiveSection("resumen")}>
-              Editar resumen
+              {isReadOnlyViewer ? "Ver resumen" : "Editar resumen"}
             </button>
             <button className="secondary-button" type="button" onClick={() => setActiveSection("cobros")}>
               Abrir cobros
@@ -390,7 +393,19 @@ export function EventDetail({ id }: { id: string }) {
             </article>
 
             <article className="panel">
-              <h2>Editar resumen</h2>
+              <h2>{isReadOnlyViewer ? "Resumen del evento" : "Editar resumen"}</h2>
+              {isReadOnlyViewer ? (
+                <div className="detail-copy">
+                  <h3>Nombre del evento</h3>
+                  <p>{form.event_name}</p>
+                  <h3>Estado</h3>
+                  <p>{editableStatuses.find((status) => status.value === form.status)?.label ?? form.status}</p>
+                  <h3>Invitados</h3>
+                  <p>{form.guest_count}</p>
+                  <h3>Notas para cliente</h3>
+                  <p>{form.client_notes || "Sin notas para cliente."}</p>
+                </div>
+              ) : (
               <form className="edit-form" onSubmit={updateEvent}>
                 <div className="form-grid-2">
                   <label>
@@ -439,6 +454,7 @@ export function EventDetail({ id }: { id: string }) {
                 </button>
                 {message && <p className="form-message">{message}</p>}
               </form>
+              )}
             </article>
           </section>
         </section>
@@ -514,16 +530,31 @@ export function EventDetail({ id }: { id: string }) {
               mainResponsibleId={event.main_responsible_id}
               onUpdated={loadEvent}
               operationsResponsibleId={event.operations_responsible_id}
+              readOnly={isReadOnlyViewer}
             />
           ) : null}
 
-          {showCoordinationDetails.tasks ? <EventTasks eventId={event.id} /> : null}
+          {showCoordinationDetails.tasks ? <EventTasks eventId={event.id} readOnly={isReadOnlyViewer} /> : null}
 
-          {showCoordinationDetails.checklists ? <EventChecklists eventId={event.id} /> : null}
+          {showCoordinationDetails.checklists ? <EventChecklists eventId={event.id} readOnly={isReadOnlyViewer} /> : null}
 
           {showCoordinationDetails.requirements ? (
             <section className="panel">
               <h2>Requerimientos y definiciones</h2>
+              {isReadOnlyViewer ? (
+                <div className="detail-copy">
+                  <h3>Servicios contratados</h3>
+                  <p>{form.contracted_services || "Sin servicios registrados."}</p>
+                  <h3>Menú</h3>
+                  <p>{form.menu_details || "Sin menú registrado."}</p>
+                  <h3>Requerimientos técnicos</h3>
+                  <p>{form.technical_requirements || "Sin requerimientos técnicos."}</p>
+                  <h3>Logística</h3>
+                  <p>{form.logistics_requirements || "Sin logística registrada."}</p>
+                  <h3>Notas internas</h3>
+                  <p>{form.internal_notes || "Sin notas internas."}</p>
+                </div>
+              ) : (
               <form className="edit-form" onSubmit={updateEvent}>
                 <label>
                   Servicios contratados
@@ -570,6 +601,7 @@ export function EventDetail({ id }: { id: string }) {
                 </button>
                 {message && <p className="form-message">{message}</p>}
               </form>
+              )}
             </section>
           ) : null}
         </section>
@@ -623,6 +655,14 @@ export function EventDetail({ id }: { id: string }) {
 
           <section className="panel">
             <h2>Resumen financiero</h2>
+            {isReadOnlyViewer ? (
+              <div className="detail-copy">
+                <h3>Total pactado</h3>
+                <p>{formatCurrency(Number(form.total_amount || 0))}</p>
+                <h3>Abono</h3>
+                <p>{formatCurrency(Number(form.deposit_amount || 0))}</p>
+              </div>
+            ) : (
             <form className="edit-form" onSubmit={updateEvent}>
               <div className="form-grid-2">
                 <label>
@@ -655,9 +695,10 @@ export function EventDetail({ id }: { id: string }) {
               </button>
               {message && <p className="form-message">{message}</p>}
             </form>
+            )}
           </section>
 
-          {showCobrosDetails.payments ? <EventPayments eventId={event.id} /> : null}
+          {showCobrosDetails.payments ? <EventPayments eventId={event.id} readOnly={isReadOnlyViewer} /> : null}
 
           {showCobrosDetails.quote ? (
             <section>
@@ -678,6 +719,7 @@ export function EventDetail({ id }: { id: string }) {
                 }}
                 eventId={event.id}
                 quoteTitle={`Cotización ${event.event_name}`}
+                readOnly={isReadOnlyViewer}
                 onTotalChange={(total) => {
                   setForm((current) => ({ ...current, total_amount: String(total) }));
                 }}
@@ -703,7 +745,7 @@ export function EventDetail({ id }: { id: string }) {
             </div>
           </section>
 
-          <EventComments eventId={event.id} />
+          <EventComments eventId={event.id} readOnly={isReadOnlyViewer} />
 
           <section className="panel">
             <div className="list-item-header">

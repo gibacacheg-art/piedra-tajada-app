@@ -96,21 +96,13 @@ export function EventCalendar() {
   }, [anchorDate, mode, visibleDays]);
 
   async function loadEvents() {
-    const { data, error } = isAvailabilityViewer
-      ? await supabase
-          .from("events")
-          .select("*")
-          .gte("event_date", range.from)
-          .lte("event_date", range.to)
-          .order("event_date", { ascending: true })
-          .order("start_time", { ascending: true })
-      : await supabase
-          .from("events")
-          .select("*, clients(full_name, phone, email, company_name)")
-          .gte("event_date", range.from)
-          .lte("event_date", range.to)
-          .order("event_date", { ascending: true })
-          .order("start_time", { ascending: true });
+    const { data, error } = await supabase
+      .from("events")
+      .select("*, clients(full_name, phone, email, company_name)")
+      .gte("event_date", range.from)
+      .lte("event_date", range.to)
+      .order("event_date", { ascending: true })
+      .order("start_time", { ascending: true });
 
     if (error) {
       setMessage(`No se pudo cargar calendario: ${error.message}`);
@@ -167,7 +159,7 @@ export function EventCalendar() {
         title="Calendario de eventos"
         description={
           isAvailabilityViewer
-            ? "Revisa rápido si un día está disponible u ocupado antes de confirmar disponibilidad."
+            ? "Empieza aquí para revisar disponibilidad y luego abrir el detalle del caso en modo solo lectura."
             : "Consulta pre-reservas, eventos confirmados y ejecución por semana, mes o rangos largos."
         }
       />
@@ -230,7 +222,7 @@ export function EventCalendar() {
                             <strong>{event.event_name}</strong>
                             <p>
                               {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)} ·{" "}
-                              {isAvailabilityViewer ? "Reservado" : event.clients?.full_name ?? "Sin cliente"}
+                              {event.clients?.full_name ?? "Sin cliente"}
                             </p>
                           </div>
                           <StatusBadge status={event.status} />

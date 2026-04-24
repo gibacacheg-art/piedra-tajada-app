@@ -8,14 +8,18 @@ type RouteRule = {
 
 const allRoles: RoleCode[] = ["admin_general", "ventas", "coordinador_evento", "responsable_area", "consulta_disponibilidad"];
 const operationalRoles: RoleCode[] = ["admin_general", "ventas", "coordinador_evento", "responsable_area"];
+const readOnlyViewerRoles: RoleCode[] = ["consulta_disponibilidad"];
+const operationalAndViewerRoles: RoleCode[] = [...operationalRoles, ...readOnlyViewerRoles];
 
 export const appRoutes: RouteRule[] = [
-  { href: "/dashboard", label: "Inicio", allowedRoles: operationalRoles },
-  { href: "/reservations", label: "Reservas", allowedRoles: operationalRoles },
+  { href: "/dashboard", label: "Inicio", allowedRoles: operationalAndViewerRoles },
+  { href: "/reservations", label: "Reservas", allowedRoles: operationalAndViewerRoles },
   { href: "/calendar", label: "Calendario", allowedRoles: allRoles },
-  { href: "/clients", label: "Clientes", allowedRoles: ["admin_general", "ventas", "coordinador_evento"] },
-  { href: "/payments", label: "Cobros y facturación", allowedRoles: ["admin_general", "ventas", "coordinador_evento"] },
-  { href: "/documents", label: "Documentos", allowedRoles: operationalRoles },
+  { href: "/clients", label: "Clientes", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "consulta_disponibilidad"] },
+  { href: "/requests", label: "Solicitudes", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "consulta_disponibilidad"] },
+  { href: "/events", label: "Eventos", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "responsable_area", "consulta_disponibilidad"] },
+  { href: "/payments", label: "Cobros y facturación", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "consulta_disponibilidad"] },
+  { href: "/documents", label: "Documentos", allowedRoles: operationalAndViewerRoles },
   { href: "/admin", label: "Administración", allowedRoles: operationalRoles },
   { href: "/profile", label: "Mi perfil", allowedRoles: allRoles }
 ];
@@ -24,18 +28,18 @@ const routePermissions: RouteRule[] = [
   { href: "/admin", allowedRoles: operationalRoles },
   { href: "/admin/users", allowedRoles: ["admin_general"] },
   { href: "/clients/new", allowedRoles: ["admin_general", "ventas"] },
-  { href: "/clients", allowedRoles: ["admin_general", "ventas", "coordinador_evento"] },
-  { href: "/reservations", allowedRoles: operationalRoles },
+  { href: "/clients", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "consulta_disponibilidad"] },
+  { href: "/reservations", allowedRoles: operationalAndViewerRoles },
   { href: "/requests/new", allowedRoles: ["admin_general", "ventas"] },
-  { href: "/requests", allowedRoles: ["admin_general", "ventas", "coordinador_evento"] },
-  { href: "/payments", allowedRoles: ["admin_general", "ventas", "coordinador_evento"] },
-  { href: "/events", allowedRoles: operationalRoles },
+  { href: "/requests", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "consulta_disponibilidad"] },
+  { href: "/payments", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "consulta_disponibilidad"] },
+  { href: "/events", allowedRoles: operationalAndViewerRoles },
   { href: "/calendar", allowedRoles: allRoles },
-  { href: "/documents", allowedRoles: operationalRoles },
+  { href: "/documents", allowedRoles: operationalAndViewerRoles },
   { href: "/trash", allowedRoles: ["admin_general"] },
   { href: "/my-tasks", allowedRoles: operationalRoles },
   { href: "/profile", allowedRoles: allRoles },
-  { href: "/dashboard", allowedRoles: operationalRoles }
+  { href: "/dashboard", allowedRoles: operationalAndViewerRoles }
 ];
 
 export function hasAnyAllowedRole(userRoles: string[], allowedRoles?: RoleCode[]) {

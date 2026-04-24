@@ -9,13 +9,15 @@ export function EventResponsibles({
   mainResponsibleId,
   commercialResponsibleId,
   operationsResponsibleId,
-  onUpdated
+  onUpdated,
+  readOnly = false
 }: {
   eventId: string;
   mainResponsibleId: string | null;
   commercialResponsibleId: string | null;
   operationsResponsibleId: string | null;
   onUpdated: () => Promise<void>;
+  readOnly?: boolean;
 }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -114,53 +116,59 @@ export function EventResponsibles({
       <div className="list-item-header">
         <div>
           <h2>Responsables</h2>
-          <p className="muted">Define responsables principales y responsables por área para este evento.</p>
+          <p className="muted">
+            {readOnly ? "Consulta responsables principales y responsables por área de este evento." : "Define responsables principales y responsables por área para este evento."}
+          </p>
         </div>
         <strong>{responsibles.length} por área</strong>
       </div>
 
-      <div className="form-grid-2">
-        <label>
-          Responsable principal
-          <select value={mainResponsibleId ?? ""} onChange={(event) => updateEventResponsible("main_responsible_id", event.target.value)}>
-            <option value="">Sin asignar</option>
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.full_name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Responsable comercial
-          <select
-            value={commercialResponsibleId ?? ""}
-            onChange={(event) => updateEventResponsible("commercial_responsible_id", event.target.value)}
-          >
-            <option value="">Sin asignar</option>
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.full_name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      {!readOnly ? (
+        <>
+          <div className="form-grid-2">
+            <label>
+              Responsable principal
+              <select value={mainResponsibleId ?? ""} onChange={(event) => updateEventResponsible("main_responsible_id", event.target.value)}>
+                <option value="">Sin asignar</option>
+                {profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.full_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Responsable comercial
+              <select
+                value={commercialResponsibleId ?? ""}
+                onChange={(event) => updateEventResponsible("commercial_responsible_id", event.target.value)}
+              >
+                <option value="">Sin asignar</option>
+                {profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.full_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-      <label>
-        Responsable operaciones
-        <select
-          value={operationsResponsibleId ?? ""}
-          onChange={(event) => updateEventResponsible("operations_responsible_id", event.target.value)}
-        >
-          <option value="">Sin asignar</option>
-          {profiles.map((profile) => (
-            <option key={profile.id} value={profile.id}>
-              {profile.full_name}
-            </option>
-          ))}
-        </select>
-      </label>
+          <label>
+            Responsable operaciones
+            <select
+              value={operationsResponsibleId ?? ""}
+              onChange={(event) => updateEventResponsible("operations_responsible_id", event.target.value)}
+            >
+              <option value="">Sin asignar</option>
+              {profiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.full_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </>
+      ) : null}
 
       <div className="meta-grid" style={{ marginTop: 14 }}>
         <div className="meta-block">
@@ -177,44 +185,46 @@ export function EventResponsibles({
         </div>
       </div>
 
-      <form className="edit-form" style={{ marginTop: 14 }} onSubmit={addDepartmentResponsible}>
-        <h3>Agregar responsable por área</h3>
-        <div className="form-grid-2">
+      {!readOnly ? (
+        <form className="edit-form" style={{ marginTop: 14 }} onSubmit={addDepartmentResponsible}>
+          <h3>Agregar responsable por área</h3>
+          <div className="form-grid-2">
+            <label>
+              Usuario
+              <select value={form.user_id} onChange={(event) => setForm((current) => ({ ...current, user_id: event.target.value }))}>
+                <option value="">Selecciona usuario</option>
+                {profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.full_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Área
+              <select value={form.department_id} onChange={(event) => setForm((current) => ({ ...current, department_id: event.target.value }))}>
+                <option value="">Sin área</option>
+                {departments.map((department) => (
+                  <option key={department.id} value={department.id}>
+                    {department.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           <label>
-            Usuario
-            <select value={form.user_id} onChange={(event) => setForm((current) => ({ ...current, user_id: event.target.value }))}>
-              <option value="">Selecciona usuario</option>
-              {profiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.full_name}
-                </option>
-              ))}
-            </select>
+            Nota
+            <input
+              value={form.notes}
+              onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+              placeholder="Ej: encargado de piscina y tinaja"
+            />
           </label>
-          <label>
-            Área
-            <select value={form.department_id} onChange={(event) => setForm((current) => ({ ...current, department_id: event.target.value }))}>
-              <option value="">Sin área</option>
-              {departments.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <label>
-          Nota
-          <input
-            value={form.notes}
-            onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-            placeholder="Ej: encargado de piscina y tinaja"
-          />
-        </label>
-        <button className="primary-button" type="submit">
-          Agregar responsable
-        </button>
-      </form>
+          <button className="primary-button" type="submit">
+            Agregar responsable
+          </button>
+        </form>
+      ) : null}
 
       <div className="list" style={{ marginTop: 14 }}>
         {responsibles.length === 0 && <p className="muted">No hay responsables por área todavía.</p>}
@@ -227,9 +237,11 @@ export function EventResponsibles({
                   {responsible.departments?.name ?? "Sin área"} {responsible.notes ? `· ${responsible.notes}` : ""}
                 </p>
               </div>
-              <button className="secondary-button" type="button" onClick={() => removeResponsible(responsible)}>
-                Quitar
-              </button>
+              {!readOnly ? (
+                <button className="secondary-button" type="button" onClick={() => removeResponsible(responsible)}>
+                  Quitar
+                </button>
+              ) : null}
             </div>
           </article>
         ))}

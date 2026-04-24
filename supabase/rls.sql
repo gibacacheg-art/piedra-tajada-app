@@ -85,13 +85,13 @@ using (public.current_user_has_role('admin_general'))
 with check (public.current_user_has_role('admin_general'));
 
 create policy "staff read clients" on public.clients for select to authenticated
-using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento']));
+using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','consulta_disponibilidad']));
 create policy "sales manage clients" on public.clients for all to authenticated
 using (public.current_user_has_any_role(array['admin_general','ventas']))
 with check (public.current_user_has_any_role(array['admin_general','ventas']));
 
 create policy "staff read event requests" on public.event_requests for select to authenticated
-using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento']));
+using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','consulta_disponibilidad']));
 create policy "sales manage event requests" on public.event_requests for all to authenticated
 using (public.current_user_has_any_role(array['admin_general','ventas']))
 with check (public.current_user_has_any_role(array['admin_general','ventas']));
@@ -113,7 +113,7 @@ create policy "admins delete events" on public.events for delete to authenticate
 using (public.current_user_has_role('admin_general'));
 
 create policy "staff read space reservations" on public.event_space_reservations for select to authenticated
-using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','responsable_area']));
+using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','responsable_area','consulta_disponibilidad']));
 create policy "sales and coordinators manage space reservations" on public.event_space_reservations for all to authenticated
 using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento']))
 with check (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento']));
@@ -125,7 +125,7 @@ with check (public.current_user_has_any_role(array['admin_general','coordinador_
 
 create policy "staff read tasks" on public.tasks for select to authenticated
 using (
-  public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento'])
+  public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','consulta_disponibilidad'])
   or assigned_to = auth.uid()
   or public.is_event_responsible(event_id)
 );
@@ -142,7 +142,7 @@ with check (
 );
 
 create policy "staff read checklists" on public.checklists for select to authenticated
-using (public.current_user_has_any_role(array['admin_general','coordinador_evento','responsable_area']) or public.is_event_responsible(event_id));
+using (public.current_user_has_any_role(array['admin_general','coordinador_evento','responsable_area','consulta_disponibilidad']) or public.is_event_responsible(event_id));
 create policy "coordinators manage checklists" on public.checklists for all to authenticated
 using (public.current_user_has_any_role(array['admin_general','coordinador_evento']))
 with check (public.current_user_has_any_role(array['admin_general','coordinador_evento']));
@@ -154,13 +154,13 @@ create policy "coordinators manage checklist items" on public.checklist_items fo
 with check (public.current_user_has_any_role(array['admin_general','coordinador_evento']));
 
 create policy "sales and coordinators read payments" on public.payments for select to authenticated
-using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento']));
+using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','consulta_disponibilidad']));
 create policy "sales manage payments" on public.payments for all to authenticated
 using (public.current_user_has_any_role(array['admin_general','ventas']))
 with check (public.current_user_has_any_role(array['admin_general','ventas']));
 
 create policy "staff read documents" on public.documents for select to authenticated
-using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','responsable_area']));
+using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','responsable_area','consulta_disponibilidad']));
 create policy "staff upload documents" on public.documents for insert to authenticated
 with check (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento']));
 create policy "admins update documents" on public.documents for update to authenticated
@@ -170,7 +170,7 @@ create policy "admins delete documents" on public.documents for delete to authen
 using (public.current_user_has_role('admin_general'));
 
 create policy "staff read comments" on public.comments for select to authenticated
-using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','responsable_area']));
+using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','responsable_area','consulta_disponibilidad']));
 create policy "staff create comments" on public.comments for insert to authenticated
 with check (author_id = auth.uid());
 create policy "authors update comments" on public.comments for update to authenticated
@@ -178,7 +178,7 @@ using (author_id = auth.uid())
 with check (author_id = auth.uid());
 
 create policy "staff read activity logs" on public.activity_logs for select to authenticated
-using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','responsable_area']));
+using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','responsable_area','consulta_disponibilidad']));
 
 create policy "staff read suppliers" on public.suppliers for select to authenticated
 using (public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento']));
@@ -205,7 +205,7 @@ values ('event-documents', 'event-documents', false)
 on conflict (id) do nothing;
 
 create policy "staff can read stored event documents" on storage.objects for select to authenticated
-using (bucket_id = 'event-documents' and public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','responsable_area']));
+using (bucket_id = 'event-documents' and public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento','responsable_area','consulta_disponibilidad']));
 create policy "staff can upload event documents" on storage.objects for insert to authenticated
 with check (bucket_id = 'event-documents' and public.current_user_has_any_role(array['admin_general','ventas','coordinador_evento']));
 create policy "admins can delete event documents" on storage.objects for delete to authenticated

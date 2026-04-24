@@ -22,6 +22,8 @@ export function RequestList() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const canDeleteRequests = hasRole("admin_general") || hasRole("ventas");
+  const canCreateRequests = canAccess("/requests/new");
+  const canAccessTrash = canAccess("/trash");
 
   async function loadRequests() {
     const [requestsResponse, eventsResponse] = await Promise.all([
@@ -258,10 +260,12 @@ export function RequestList() {
             <button className="secondary-button" type="button" onClick={() => setShowArchived((current) => !current)}>
               {showArchived ? "Ver activas" : "Ver archivadas"}
             </button>
-            <Link className="secondary-button" href="/trash">
-              Papelera
-            </Link>
-            {canAccess("/requests/new") ? (
+            {canAccessTrash ? (
+              <Link className="secondary-button" href="/trash">
+                Papelera
+              </Link>
+            ) : null}
+            {canCreateRequests ? (
               <Link className="primary-button" href="/requests/new">
                 Nueva reserva
               </Link>

@@ -44,7 +44,7 @@ function eventClosureLabel(status: string, balance: number) {
 }
 
 export function ReservationsOverview() {
-  const { canAccess } = useAuth();
+  const { canAccess, hasRole } = useAuth();
   const [requests, setRequests] = useState<ReservationRequest[]>([]);
   const [events, setEvents] = useState<ReservationEvent[]>([]);
   const [eventBalances, setEventBalances] = useState<Record<string, number>>({});
@@ -53,6 +53,7 @@ export function ReservationsOverview() {
   const [message, setMessage] = useState("");
 
   const canSeeRequests = canAccess("/requests");
+  const isReadOnlyViewer = hasRole("consulta_disponibilidad");
 
   useEffect(() => {
     async function loadReservations() {
@@ -219,7 +220,7 @@ export function ReservationsOverview() {
         <div className="toolbar">
           <input placeholder="Buscar por cliente, empresa, tipo o nombre del evento" value={query} onChange={(event) => setQuery(event.target.value)} />
           <div className="button-row">
-            {canSeeRequests && (
+            {canSeeRequests && !isReadOnlyViewer && (
               <Link className="primary-button" href="/requests/new">
                 Nueva reserva
               </Link>
@@ -282,7 +283,7 @@ export function ReservationsOverview() {
                   <Link className="primary-button" href={`/requests/${request.id}`}>
                     Abrir caso
                   </Link>
-                  {["quoted", "pre_reserved", "confirmed"].includes(request.status) ? (
+                  {!isReadOnlyViewer && ["quoted", "pre_reserved", "confirmed"].includes(request.status) ? (
                     <Link className="secondary-button" href={`/requests/${request.id}?section=conversion`}>
                       Confirmar reserva
                     </Link>

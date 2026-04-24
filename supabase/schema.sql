@@ -310,7 +310,7 @@ insert into public.roles (code, name, description) values
   ('ventas', 'Ventas', 'Gestiona clientes, solicitudes, cotizaciones, pagos y reservas comerciales.'),
   ('coordinador_evento', 'Coordinador de evento', 'Coordina eventos confirmados, responsables, tareas y operación.'),
   ('responsable_area', 'Responsable de área', 'Gestiona tareas y checklists asignados a su área o usuario.'),
-  ('consulta_disponibilidad', 'Consulta de disponibilidad', 'Acceso de solo lectura al calendario para revisar si un día está disponible u ocupado.')
+  ('consulta_disponibilidad', 'Consulta general', 'Acceso de solo lectura para revisar calendario, reservas, solicitudes, eventos, clientes, cobros y documentos.')
 on conflict (code) do nothing;
 
 insert into public.event_statuses (code, label, sort_order, is_blocking) values

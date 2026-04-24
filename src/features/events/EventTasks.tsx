@@ -20,7 +20,7 @@ const statusLabels: Record<string, string> = {
   cancelled: "Cancelada"
 };
 
-export function EventTasks({ eventId }: { eventId: string }) {
+export function EventTasks({ eventId, readOnly = false }: { eventId: string; readOnly?: boolean }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -129,13 +129,16 @@ export function EventTasks({ eventId }: { eventId: string }) {
       <div className="list-item-header">
         <div>
           <h2>Tareas del evento</h2>
-          <p className="muted">Coordina pendientes por responsable, área, prioridad y vencimiento.</p>
+          <p className="muted">
+            {readOnly ? "Consulta pendientes por responsable, área, prioridad y vencimiento." : "Coordina pendientes por responsable, área, prioridad y vencimiento."}
+          </p>
         </div>
         <strong>
           {metrics.done}/{metrics.total} completadas
         </strong>
       </div>
 
+      {!readOnly ? (
       <form className="edit-form" onSubmit={createTask}>
         <div className="form-grid-2">
           <label>
@@ -220,6 +223,7 @@ export function EventTasks({ eventId }: { eventId: string }) {
           Crear tarea
         </button>
       </form>
+      ) : null}
 
       <div className="list" style={{ marginTop: 14 }}>
         {tasks.length === 0 && <p className="muted">Todavía no hay tareas para este evento.</p>}
@@ -233,13 +237,17 @@ export function EventTasks({ eventId }: { eventId: string }) {
                   {task.due_date ? ` · vence ${formatDate(task.due_date.slice(0, 10))}` : ""}
                 </p>
               </div>
-              <select value={task.status} onChange={(event) => updateStatus(task, event.target.value)}>
-                {Object.entries(statusLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+              {readOnly ? (
+                <span className="alert-pill info">{statusLabels[task.status] ?? task.status}</span>
+              ) : (
+                <select value={task.status} onChange={(event) => updateStatus(task, event.target.value)}>
+                  {Object.entries(statusLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             {task.description && <p>{task.description}</p>}
             <div className="meta-grid">

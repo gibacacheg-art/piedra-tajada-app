@@ -41,7 +41,7 @@ const templates = [
   }
 ];
 
-export function EventChecklists({ eventId }: { eventId: string }) {
+export function EventChecklists({ eventId, readOnly = false }: { eventId: string; readOnly?: boolean }) {
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [message, setMessage] = useState("");
@@ -232,13 +232,16 @@ export function EventChecklists({ eventId }: { eventId: string }) {
       <div className="list-item-header">
         <div>
           <h2>Checklist operativo</h2>
-          <p className="muted">Controla montaje, servicios, cierre y preparación por área.</p>
+          <p className="muted">
+            {readOnly ? "Consulta el avance de montaje, servicios, cierre y preparación por área." : "Controla montaje, servicios, cierre y preparación por área."}
+          </p>
         </div>
         <strong>
           {totals.done}/{totals.total} listo
         </strong>
       </div>
 
+      {!readOnly ? (
       <div className="template-row">
         {templates.map((template) => {
           const alreadyExists = checklists.some((checklist) => checklist.title.toLowerCase() === template.title.toLowerCase());
@@ -257,7 +260,9 @@ export function EventChecklists({ eventId }: { eventId: string }) {
           );
         })}
       </div>
+      ) : null}
 
+      {!readOnly ? (
       <form className="edit-form" onSubmit={createChecklist}>
         <div className="form-grid-2">
           <label>
@@ -285,6 +290,7 @@ export function EventChecklists({ eventId }: { eventId: string }) {
           Crear checklist
         </button>
       </form>
+      ) : null}
 
       <div className="list" style={{ marginTop: 14 }}>
         {checklists.length === 0 && <p className="muted">Todavía no hay checklists para este evento.</p>}
@@ -301,9 +307,11 @@ export function EventChecklists({ eventId }: { eventId: string }) {
                     {checklist.departments?.name ?? "Sin área"} · {done}/{items.length} listo
                   </p>
                 </div>
-                <button className="secondary-button" type="button" onClick={() => deleteChecklist(checklist)}>
-                  Eliminar checklist
-                </button>
+                {!readOnly ? (
+                  <button className="secondary-button" type="button" onClick={() => deleteChecklist(checklist)}>
+                    Eliminar checklist
+                  </button>
+                ) : null}
               </div>
 
               <div className="checklist-items">
@@ -311,22 +319,24 @@ export function EventChecklists({ eventId }: { eventId: string }) {
                   .sort((a, b) => a.sort_order - b.sort_order)
                   .map((item) => (
                     <label className="checklist-item" key={item.id}>
-                      <input checked={item.is_done} type="checkbox" onChange={() => toggleItem(checklist.id, item.id, item.is_done)} />
+                      <input checked={item.is_done} disabled={readOnly} type="checkbox" onChange={() => toggleItem(checklist.id, item.id, item.is_done)} />
                       <span>{item.title}</span>
                     </label>
                   ))}
               </div>
 
-              <div className="inline-add">
-                <input
-                  value={itemForms[checklist.id] ?? ""}
-                  onChange={(event) => setItemForms((current) => ({ ...current, [checklist.id]: event.target.value }))}
-                  placeholder="Agregar ítem"
-                />
-                <button className="secondary-button" type="button" onClick={() => addItem(checklist.id)}>
-                  Agregar
-                </button>
-              </div>
+              {!readOnly ? (
+                <div className="inline-add">
+                  <input
+                    value={itemForms[checklist.id] ?? ""}
+                    onChange={(event) => setItemForms((current) => ({ ...current, [checklist.id]: event.target.value }))}
+                    placeholder="Agregar ítem"
+                  />
+                  <button className="secondary-button" type="button" onClick={() => addItem(checklist.id)}>
+                    Agregar
+                  </button>
+                </div>
+              ) : null}
             </article>
           );
         })}

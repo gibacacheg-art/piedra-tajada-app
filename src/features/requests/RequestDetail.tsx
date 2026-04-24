@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import type { EventRequest, Profile } from "@/types/database";
@@ -13,6 +14,7 @@ import { RequestQuoteItems } from "./RequestQuoteItems";
 
 export function RequestDetail({ id, initialSection = "resumen" }: { id: string; initialSection?: string }) {
   const router = useRouter();
+  const { hasRole } = useAuth();
   const [request, setRequest] = useState<EventRequest | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,6 +100,7 @@ export function RequestDetail({ id, initialSection = "resumen" }: { id: string; 
   }, [request]);
 
   const targetEventStatus = form.event_status;
+  const isReadOnlyViewer = hasRole("consulta_disponibilidad");
 
   const commercialSummary = useMemo(() => {
     if (!request) return null;
@@ -263,7 +266,8 @@ export function RequestDetail({ id, initialSection = "resumen" }: { id: string; 
     { id: "cotizacion", label: "Cotización" },
     { id: "seguimiento", label: "Seguimiento" },
     { id: "conversion", label: "Confirmar reserva" }
-  ];
+  ].filter((section) => !isReadOnlyViewer || ["resumen", "cotizacion", "seguimiento"].includes(section.id));
+  const currentSection = sections.some((section) => section.id === activeSection) ? activeSection : "resumen";
   const caseOwnerLabel = linkedEventId && request.status === "confirmed" ? "Ahora manda el evento" : "Todavía manda la reserva";
 
   return (
@@ -355,7 +359,7 @@ export function RequestDetail({ id, initialSection = "resumen" }: { id: string; 
       <nav className="section-tabs" aria-label="Secciones de la solicitud">
         {sections.map((section) => (
           <button
-            className={activeSection === section.id ? "primary-button" : "secondary-button"}
+            className={currentSection === section.id ? "primary-button" : "secondary-button"}
             key={section.id}
             type="button"
             onClick={() => setActiveSection(section.id)}
@@ -365,7 +369,7 @@ export function RequestDetail({ id, initialSection = "resumen" }: { id: string; 
         ))}
       </nav>
 
-      {activeSection === "resumen" && (
+      {currentSection === "resumen" && (
         <section className="content-grid" style={{ marginTop: 14 }}>
           <div className="detail-section">
             <h2>Datos del cliente y del evento</h2>
@@ -420,7 +424,7 @@ export function RequestDetail({ id, initialSection = "resumen" }: { id: string; 
         </section>
       )}
 
-      {activeSection === "cotizacion" && (
+      {currentSection === "cotizacion" && (
         <div style={{ marginTop: 14 }}>
           <RequestQuoteItems
             client={{
@@ -439,6 +443,7 @@ export function RequestDetail({ id, initialSection = "resumen" }: { id: string; 
             }}
             quoteTitle={`Cotización ${request.event_type}`}
             requestId={request.id}
+            readOnly={isReadOnlyViewer}
             onTotalChange={(total) => {
               setForm((current) => (current.total_amount ? current : { ...current, total_amount: String(total) }));
             }}
@@ -446,69 +451,84 @@ export function RequestDetail({ id, initialSection = "resumen" }: { id: string; 
         </div>
       )}
 
-      {activeSection === "seguimiento" && (
+      {currentSection === "seguimiento" && (
         <section className="panel" style={{ marginTop: 14 }}>
-          <form className="edit-form" onSubmit={saveCommercialData}>
-            <div className="list-item-header">
-              <div>
-                <h2>Gestión comercial</h2>
-                <p className="muted">Define responsable, estado comercial y observaciones de seguimiento.</p>
-              </div>
-              <div className="button-row">
-                {currentUserId && (
-                  <button className="secondary-button" type="button" onClick={assignToMe}>
-                    Asignarme seguimiento
-                  </button>
-                )}
-                {request.status === "request_received" && (
-                  <button className="secondary-button" type="button" onClick={markAsQuoted}>
-                    Marcar cotización enviada
-                  </button>
-                )}
-                {request.status !== "lost" && (
-                  <button className="secondary-button" type="button" onClick={markAsLost}>
-                    Marcar perdida
-                  </button>
-                )}
-              </div>
+          {isReadOnlyViewer ? (
+            <div className="detail-copy">
+              <h2>Seguimiento comercial</h2>
+              <p className="muted">Esta ficha está en modo solo lectura para consulta rápida del caso.</p>
+              <h3>Estado comercial</h3>
+              <p>{commercialForm.status === "request_received" ? "Nueva solicitud" : commercialForm.status === "quoted" ? "Cotización enviada" : "Perdida"}</p>
+              <h3>Responsable comercial</h3>
+              <p>{profileName(commercialForm.created_by)}</p>
+              <h3>Origen comercial</h3>
+              <p>{commercialForm.lead_source || "Sin origen registrado."}</p>
+              <h3>Notas de seguimiento</h3>
+              <p>{commercialForm.notes || "Sin notas de seguimiento."}</p>
             </div>
+          ) : (
+            <form className="edit-form" onSubmit={saveCommercialData}>
+              <div className="list-item-header">
+                <div>
+                  <h2>Gestión comercial</h2>
+                  <p className="muted">Define responsable, estado comercial y observaciones de seguimiento.</p>
+                </div>
+                <div className="button-row">
+                  {currentUserId && (
+                    <button className="secondary-button" type="button" onClick={assignToMe}>
+                      Asignarme seguimiento
+                    </button>
+                  )}
+                  {request.status === "request_received" && (
+                    <button className="secondary-button" type="button" onClick={markAsQuoted}>
+                      Marcar cotización enviada
+                    </button>
+                  )}
+                  {request.status !== "lost" && (
+                    <button className="secondary-button" type="button" onClick={markAsLost}>
+                      Marcar perdida
+                    </button>
+                  )}
+                </div>
+              </div>
 
-            <label>
-              Estado comercial
-              <select value={commercialForm.status} onChange={(event) => setCommercialForm((current) => ({ ...current, status: event.target.value }))}>
-                <option value="request_received">Nueva solicitud</option>
-                <option value="quoted">Cotización enviada</option>
-                <option value="lost">Perdida</option>
-              </select>
-            </label>
-            <label>
-              Responsable comercial
-              <select value={commercialForm.created_by} onChange={(event) => setCommercialForm((current) => ({ ...current, created_by: event.target.value }))}>
-                <option value="">Sin asignar</option>
-                {profiles.map((profile) => (
-                  <option key={profile.id} value={profile.id}>
-                    {profile.full_name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Origen comercial
-              <input value={commercialForm.lead_source} onChange={(event) => setCommercialForm((current) => ({ ...current, lead_source: event.target.value }))} />
-            </label>
-            <label>
-              Notas de seguimiento
-              <textarea rows={6} value={commercialForm.notes} onChange={(event) => setCommercialForm((current) => ({ ...current, notes: event.target.value }))} />
-            </label>
-            <button className="primary-button" type="submit">
-              Guardar seguimiento comercial
-            </button>
-            {message && <p className="form-message">{message}</p>}
-          </form>
+              <label>
+                Estado comercial
+                <select value={commercialForm.status} onChange={(event) => setCommercialForm((current) => ({ ...current, status: event.target.value }))}>
+                  <option value="request_received">Nueva solicitud</option>
+                  <option value="quoted">Cotización enviada</option>
+                  <option value="lost">Perdida</option>
+                </select>
+              </label>
+              <label>
+                Responsable comercial
+                <select value={commercialForm.created_by} onChange={(event) => setCommercialForm((current) => ({ ...current, created_by: event.target.value }))}>
+                  <option value="">Sin asignar</option>
+                  {profiles.map((profile) => (
+                    <option key={profile.id} value={profile.id}>
+                      {profile.full_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Origen comercial
+                <input value={commercialForm.lead_source} onChange={(event) => setCommercialForm((current) => ({ ...current, lead_source: event.target.value }))} />
+              </label>
+              <label>
+                Notas de seguimiento
+                <textarea rows={6} value={commercialForm.notes} onChange={(event) => setCommercialForm((current) => ({ ...current, notes: event.target.value }))} />
+              </label>
+              <button className="primary-button" type="submit">
+                Guardar seguimiento comercial
+              </button>
+              {message && <p className="form-message">{message}</p>}
+            </form>
+          )}
         </section>
       )}
 
-      {activeSection === "conversion" && (
+      {currentSection === "conversion" && !isReadOnlyViewer && (
         <section className="panel" style={{ marginTop: 14 }}>
           <form className="edit-form" onSubmit={convertToEvent}>
             <h2>Confirmar reserva</h2>

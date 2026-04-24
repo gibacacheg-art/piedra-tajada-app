@@ -230,7 +230,8 @@ export function RequestQuoteItems({
   quoteTitle = "Cotización Piedra Tajada SpA",
   client,
   context,
-  onTotalChange
+  onTotalChange,
+  readOnly = false
 }: {
   requestId?: string;
   eventId?: string;
@@ -238,6 +239,7 @@ export function RequestQuoteItems({
   client?: QuoteClient;
   context?: QuoteContext;
   onTotalChange?: (total: number) => void;
+  readOnly?: boolean;
 }) {
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [message, setMessage] = useState("");
@@ -384,7 +386,7 @@ export function RequestQuoteItems({
       <div className="list-item-header">
         <div>
           <h2>Cotización por servicios</h2>
-          <p className="muted">Agrega cantidad y valor a cada servicio solicitado.</p>
+          <p className="muted">{readOnly ? "Consulta la valorización actual de la cotización." : "Agrega cantidad y valor a cada servicio solicitado."}</p>
         </div>
         <div>
           <strong>{formatCurrency(totalsBreakdown.gross)}</strong>
@@ -392,9 +394,11 @@ export function RequestQuoteItems({
             Neto {formatCurrency(totalsBreakdown.net)} · IVA {formatCurrency(totalsBreakdown.vat)}
           </p>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-            <button className="secondary-button" type="button" onClick={saveCurrentQuote}>
-              Guardar cotización
-            </button>
+            {!readOnly ? (
+              <button className="secondary-button" type="button" onClick={saveCurrentQuote}>
+                Guardar cotización
+              </button>
+            ) : null}
             <button className="secondary-button" type="button" onClick={openPrintableQuote}>
               Guardar PDF
             </button>
@@ -402,56 +406,58 @@ export function RequestQuoteItems({
         </div>
       </div>
 
-      <form className="edit-form" onSubmit={addItem}>
-        <div className="form-grid-2">
-          <label>
-            Servicio
-            <select value={form.service_name} onChange={(event) => setForm((current) => ({ ...current, service_name: event.target.value }))}>
-              {serviceOptions.map((service) => (
-                <option key={service} value={service}>
-                  {service}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Detalle
-            <input
-              value={form.description}
-              onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-              placeholder="Ej: 4 horas, menú adulto, temática..."
-            />
-          </label>
-        </div>
-        <div className="form-grid-2">
-          <label>
-            Cantidad
-            <input
-              min={0.01}
-              required
-              step={0.01}
-              type="number"
-              value={form.quantity}
-              onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))}
-            />
-          </label>
-          <label>
-            Valor unitario con IVA
-            <input
-              inputMode="numeric"
-              min={0}
-              required
-              step={1}
-              type="number"
-              value={form.unit_price}
-              onChange={(event) => setForm((current) => ({ ...current, unit_price: event.target.value }))}
-            />
-          </label>
-        </div>
-        <button className="primary-button" type="submit">
-          Agregar servicio
-        </button>
-      </form>
+      {!readOnly ? (
+        <form className="edit-form" onSubmit={addItem}>
+          <div className="form-grid-2">
+            <label>
+              Servicio
+              <select value={form.service_name} onChange={(event) => setForm((current) => ({ ...current, service_name: event.target.value }))}>
+                {serviceOptions.map((service) => (
+                  <option key={service} value={service}>
+                    {service}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Detalle
+              <input
+                value={form.description}
+                onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                placeholder="Ej: 4 horas, menú adulto, temática..."
+              />
+            </label>
+          </div>
+          <div className="form-grid-2">
+            <label>
+              Cantidad
+              <input
+                min={0.01}
+                required
+                step={0.01}
+                type="number"
+                value={form.quantity}
+                onChange={(event) => setForm((current) => ({ ...current, quantity: event.target.value }))}
+              />
+            </label>
+            <label>
+              Valor unitario con IVA
+              <input
+                inputMode="numeric"
+                min={0}
+                required
+                step={1}
+                type="number"
+                value={form.unit_price}
+                onChange={(event) => setForm((current) => ({ ...current, unit_price: event.target.value }))}
+              />
+            </label>
+          </div>
+          <button className="primary-button" type="submit">
+            Agregar servicio
+          </button>
+        </form>
+      ) : null}
 
       <div className="list" style={{ marginTop: 14 }}>
         {items.length === 0 && <p className="muted">Aún no hay servicios valorizados.</p>}
@@ -474,9 +480,11 @@ export function RequestQuoteItems({
                 {formatCurrency(item.unit_price)}
               </div>
             </div>
-            <button className="secondary-button" type="button" onClick={() => deleteItem(item.id)}>
-              Eliminar
-            </button>
+            {!readOnly ? (
+              <button className="secondary-button" type="button" onClick={() => deleteItem(item.id)}>
+                Eliminar
+              </button>
+            ) : null}
           </article>
         ))}
       </div>

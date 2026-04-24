@@ -11,7 +11,7 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
-export function EventComments({ eventId }: { eventId: string }) {
+export function EventComments({ eventId, readOnly = false }: { eventId: string; readOnly?: boolean }) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [body, setBody] = useState("");
   const [message, setMessage] = useState("");
@@ -67,26 +67,30 @@ export function EventComments({ eventId }: { eventId: string }) {
       <div className="list-item-header">
         <div>
           <h2>Bitácora interna</h2>
-          <p className="muted">Registra decisiones, acuerdos, cambios y observaciones del equipo.</p>
+          <p className="muted">
+            {readOnly ? "Consulta decisiones, acuerdos, cambios y observaciones del equipo." : "Registra decisiones, acuerdos, cambios y observaciones del equipo."}
+          </p>
         </div>
         <strong>{comments.length} notas</strong>
       </div>
 
-      <form className="edit-form" onSubmit={addComment}>
-        <label>
-          Nuevo comentario interno
-          <textarea
-            required
-            rows={3}
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
-            placeholder="Ej: Cliente confirma piscina hasta las 18:00. Alimentación queda pendiente de menú final."
-          />
-        </label>
-        <button className="primary-button" type="submit">
-          Agregar a bitácora
-        </button>
-      </form>
+      {!readOnly ? (
+        <form className="edit-form" onSubmit={addComment}>
+          <label>
+            Nuevo comentario interno
+            <textarea
+              required
+              rows={3}
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+              placeholder="Ej: Cliente confirma piscina hasta las 18:00. Alimentación queda pendiente de menú final."
+            />
+          </label>
+          <button className="primary-button" type="submit">
+            Agregar a bitácora
+          </button>
+        </form>
+      ) : null}
 
       <div className="list" style={{ marginTop: 14 }}>
         {comments.length === 0 && <p className="muted">Todavía no hay comentarios internos para este evento.</p>}
