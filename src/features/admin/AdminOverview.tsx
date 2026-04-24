@@ -45,6 +45,19 @@ export function AdminOverview() {
         ) : null}
 
         <article className="panel">
+          <h2>Manual de usuario</h2>
+          <p className="muted">Descarga la guía rápida para reservas, eventos, cobros, documentos, perfiles y criterio de uso.</p>
+          <div className="button-row" style={{ marginTop: 14 }}>
+            <a className="secondary-button" href="/manual-usuario-piedra-tajada.html" target="_blank" rel="noreferrer">
+              Abrir manual
+            </a>
+            <a className="primary-button" href="/manual-usuario-piedra-tajada.html" download>
+              Descargar manual
+            </a>
+          </div>
+        </article>
+
+        <article className="panel">
           <h2>Criterio de uso</h2>
           <ul className="detail-copy">
             <li>Usa archivar cuando quieras sacar algo del día a día sin perderlo.</li>

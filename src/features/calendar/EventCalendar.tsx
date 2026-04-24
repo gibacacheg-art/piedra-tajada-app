@@ -62,6 +62,16 @@ function getWeekDays(anchor: Date) {
   return Array.from({ length: 7 }, (_item, index) => addDays(first, index));
 }
 
+function dayAvailabilityLabel(dayEvents: Event[]) {
+  if (dayEvents.length === 0) return "Disponible";
+  if (dayEvents.some((event) => event.status === "cancelled")) {
+    const activeEvents = dayEvents.filter((event) => event.status !== "cancelled");
+    if (activeEvents.length === 0) return "Sin uso activo";
+  }
+
+  return "Ocupado";
+}
+
 export function EventCalendar() {
   const [mode, setMode] = useState<CalendarMode>("month");
   const [anchorDate, setAnchorDate] = useState(new Date());
@@ -183,37 +193,82 @@ export function EventCalendar() {
         </div>
 
         {mode === "week" || mode === "month" ? (
-          <div className={mode === "week" ? "calendar-grid calendar-grid-week" : "calendar-grid calendar-grid-month"}>
-            {visibleDays.map((day) => {
-              const dayEvents = eventsForDay(day);
-              const isOutsideMonth = mode === "month" && day.getMonth() !== anchorDate.getMonth();
-              const isToday = toDateValue(day) === toDateValue(new Date());
+          <>
+            <div className={mode === "week" ? "calendar-grid calendar-grid-week" : "calendar-grid calendar-grid-month"}>
+              {visibleDays.map((day) => {
+                const dayEvents = eventsForDay(day);
+                const isOutsideMonth = mode === "month" && day.getMonth() !== anchorDate.getMonth();
+                const isToday = toDateValue(day) === toDateValue(new Date());
 
-              return (
-                <article className={`calendar-day${isOutsideMonth ? " is-muted" : ""}${isToday ? " is-today" : ""}`} key={toDateValue(day)}>
-                  <header>
-                    <span>{new Intl.DateTimeFormat("es-CL", { weekday: "short" }).format(day)}</span>
-                    <strong>{new Intl.DateTimeFormat("es-CL", { day: "2-digit" }).format(day)}</strong>
-                  </header>
+                return (
+                  <article className={`calendar-day${isOutsideMonth ? " is-muted" : ""}${isToday ? " is-today" : ""}`} key={toDateValue(day)}>
+                    <header>
+                      <span>{new Intl.DateTimeFormat("es-CL", { weekday: "short" }).format(day)}</span>
+                      <strong>{new Intl.DateTimeFormat("es-CL", { day: "2-digit" }).format(day)}</strong>
+                    </header>
 
-                  <div className="calendar-events">
-                    {dayEvents.length === 0 && <p className="muted">Disponible</p>}
-                    {dayEvents.map((event) => (
-                      <Link className="calendar-event" href={`/events/${event.id}`} key={event.id}>
-                        <div>
-                          <strong>{event.event_name}</strong>
-                          <p>
-                            {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)} · {event.clients?.full_name ?? "Sin cliente"}
-                          </p>
-                        </div>
-                        <StatusBadge status={event.status} />
-                      </Link>
-                    ))}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                    <div className="calendar-events">
+                      {dayEvents.length === 0 && <p className="muted">Disponible</p>}
+                      {dayEvents.map((event) => (
+                        <Link className="calendar-event" href={`/events/${event.id}`} key={event.id}>
+                          <div>
+                            <strong>{event.event_name}</strong>
+                            <p>
+                              {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)} · {event.clients?.full_name ?? "Sin cliente"}
+                            </p>
+                          </div>
+                          <StatusBadge status={event.status} />
+                        </Link>
+                      ))}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="calendar-mobile-list">
+              {visibleDays.map((day) => {
+                const dayEvents = eventsForDay(day);
+                const isOutsideMonth = mode === "month" && day.getMonth() !== anchorDate.getMonth();
+                const isToday = toDateValue(day) === toDateValue(new Date());
+                const availability = dayAvailabilityLabel(dayEvents);
+
+                if (isOutsideMonth) {
+                  return null;
+                }
+
+                return (
+                  <article className={`calendar-mobile-day${isToday ? " is-today" : ""}`} key={`mobile-${toDateValue(day)}`}>
+                    <div className="calendar-mobile-day-header">
+                      <div>
+                        <p className="eyebrow">{new Intl.DateTimeFormat("es-CL", { weekday: "long" }).format(day)}</p>
+                        <h3>{formatDate(toDateValue(day))}</h3>
+                      </div>
+                      <span className={`availability-pill${dayEvents.length > 0 ? " is-busy" : ""}`}>{availability}</span>
+                    </div>
+
+                    {dayEvents.length === 0 ? (
+                      <p className="muted">No hay eventos registrados para este día.</p>
+                    ) : (
+                      <div className="calendar-mobile-events">
+                        {dayEvents.map((event) => (
+                          <Link className="calendar-event" href={`/events/${event.id}`} key={event.id}>
+                            <div>
+                              <strong>{event.event_name}</strong>
+                              <p>
+                                {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)} · {event.clients?.full_name ?? "Sin cliente"}
+                              </p>
+                            </div>
+                            <StatusBadge status={event.status} />
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </>
         ) : (
           <div className="agenda-range">
             {longRangeEvents.length === 0 && <p className="muted">No hay eventos en este rango.</p>}
