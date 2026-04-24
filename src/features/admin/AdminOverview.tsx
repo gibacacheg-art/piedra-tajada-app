@@ -52,6 +52,11 @@ export function AdminOverview() {
               Abrir manual
             </a>
             <a className="primary-button" href="/manual-usuario-piedra-tajada.html" download>
+              <svg aria-hidden="true" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 3v11" />
+                <path d="m7 10 5 5 5-5" />
+                <path d="M5 21h14" />
+              </svg>
               Descargar manual
             </a>
           </div>

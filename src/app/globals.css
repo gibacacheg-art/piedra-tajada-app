@@ -213,11 +213,22 @@ textarea:focus {
 
 .primary-button,
 .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-height: 42px;
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 10px 14px;
   font-weight: 800;
+  text-decoration: none;
+}
+
+.button-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
 }
 
 .primary-button {
