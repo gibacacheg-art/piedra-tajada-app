@@ -43,12 +43,23 @@ const initialForm = {
   notes: ""
 };
 
+const initialClientForm = {
+  full_name: "",
+  phone: "",
+  email: "",
+  company_name: "",
+  notes: ""
+};
+
 export function RequestForm({ onCreated }: { onCreated?: () => Promise<void> }) {
   const [clients, setClients] = useState<Client[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [servicePricing, setServicePricing] = useState<Record<string, ServicePricing>>({});
   const [createdRequestId, setCreatedRequestId] = useState<string | null>(null);
+  const [creatingClientInline, setCreatingClientInline] = useState(false);
+  const [clientQuery, setClientQuery] = useState("");
+  const [clientForm, setClientForm] = useState(initialClientForm);
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
 
@@ -74,9 +85,21 @@ export function RequestForm({ onCreated }: { onCreated?: () => Promise<void> }) 
     }, 0);
   }, [selectedServices, servicePricing]);
 
+  const filteredClients = useMemo(() => {
+    const normalizedQuery = clientQuery.trim().toLowerCase();
+    if (!normalizedQuery) return clients;
+
+    return clients.filter((client) =>
+      [client.full_name, client.company_name, client.phone, client.email].join(" ").toLowerCase().includes(normalizedQuery)
+    );
+  }, [clientQuery, clients]);
+
   function resetForNextRequest() {
     setCreatedRequestId(null);
     setForm(initialForm);
+    setCreatingClientInline(false);
+    setClientQuery("");
+    setClientForm(initialClientForm);
     setSelectedServices([]);
     setServicePricing({});
     setMessage("");
@@ -117,6 +140,31 @@ export function RequestForm({ onCreated }: { onCreated?: () => Promise<void> }) 
     setMessage("Guardando solicitud...");
 
     const { data: userData } = await supabase.auth.getUser();
+    let clientId = form.client_id;
+
+    if (creatingClientInline) {
+      const { data: createdClient, error: clientError } = await supabase
+        .from("clients")
+        .insert({
+          full_name: clientForm.full_name.trim(),
+          phone: clientForm.phone.trim() || null,
+          email: clientForm.email.trim() || null,
+          company_name: clientForm.company_name.trim() || null,
+          notes: clientForm.notes.trim() || null,
+          created_by: userData.user?.id ?? null
+        })
+        .select("*")
+        .single();
+
+      if (clientError) {
+        setMessage(`No se pudo crear el cliente: ${clientError.message}`);
+        return;
+      }
+
+      clientId = createdClient.id;
+      setClients((current) => [...current, createdClient as Client].sort((a, b) => a.full_name.localeCompare(b.full_name, "es")));
+    }
+
     const salonSpace = spaces.find((space) => space.name.toLowerCase().includes("sal"));
     const shouldBlockSalon = selectedServices.includes("Salón de eventos") && salonSpace;
 
@@ -137,7 +185,7 @@ export function RequestForm({ onCreated }: { onCreated?: () => Promise<void> }) 
     const { data, error } = await supabase
       .from("event_requests")
       .insert({
-        client_id: form.client_id,
+        client_id: clientId,
         event_type: form.event_type.trim(),
         tentative_date: form.tentative_date,
         start_time: form.start_time,
@@ -198,22 +246,108 @@ export function RequestForm({ onCreated }: { onCreated?: () => Promise<void> }) 
   return (
     <form className="panel" onSubmit={createRequest}>
       <h2>Nueva solicitud</h2>
-      <label>
-        Cliente
-        <select
-          required
-          value={form.client_id}
-          onChange={(event) => setForm((current) => ({ ...current, client_id: event.target.value }))}
+      <div className="button-row" style={{ marginBottom: 6 }}>
+        <button
+          className={!creatingClientInline ? "primary-button" : "secondary-button"}
+          type="button"
+          onClick={() => {
+            setCreatingClientInline(false);
+            setMessage("");
+          }}
         >
-          <option value="">Selecciona un cliente</option>
-          {clients.map((client) => (
-            <option key={client.id} value={client.id}>
-              {client.full_name}
-              {client.company_name ? ` · ${client.company_name}` : ""}
-            </option>
-          ))}
-        </select>
-      </label>
+          Cliente existente
+        </button>
+        <button
+          className={creatingClientInline ? "primary-button" : "secondary-button"}
+          type="button"
+          onClick={() => {
+            setCreatingClientInline(true);
+            setForm((current) => ({ ...current, client_id: "" }));
+            setMessage("");
+          }}
+        >
+          Crear cliente nuevo
+        </button>
+      </div>
+
+      {!creatingClientInline ? (
+        <>
+          <label>
+            Buscar cliente
+            <input
+              value={clientQuery}
+              onChange={(event) => setClientQuery(event.target.value)}
+              placeholder="Buscar por nombre, empresa, teléfono o correo"
+            />
+          </label>
+          <label>
+            Cliente
+            <select
+              required={!creatingClientInline}
+              value={form.client_id}
+              onChange={(event) => setForm((current) => ({ ...current, client_id: event.target.value }))}
+            >
+              <option value="">Selecciona un cliente</option>
+              {filteredClients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.full_name}
+                  {client.company_name ? ` · ${client.company_name}` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        </>
+      ) : (
+        <>
+          <div className="form-grid-2">
+            <label>
+              Nombre completo
+              <input
+                required={creatingClientInline}
+                value={clientForm.full_name}
+                onChange={(event) => setClientForm((current) => ({ ...current, full_name: event.target.value }))}
+                placeholder="Nombre de la persona de contacto"
+              />
+            </label>
+            <label>
+              Empresa
+              <input
+                value={clientForm.company_name}
+                onChange={(event) => setClientForm((current) => ({ ...current, company_name: event.target.value }))}
+                placeholder="Opcional"
+              />
+            </label>
+          </div>
+          <div className="form-grid-2">
+            <label>
+              Teléfono
+              <input
+                value={clientForm.phone}
+                onChange={(event) => setClientForm((current) => ({ ...current, phone: event.target.value }))}
+                placeholder="+56 9 1234 5678"
+              />
+            </label>
+            <label>
+              Correo
+              <input
+                type="email"
+                value={clientForm.email}
+                onChange={(event) => setClientForm((current) => ({ ...current, email: event.target.value }))}
+                placeholder="correo@ejemplo.cl"
+              />
+            </label>
+          </div>
+          <label>
+            Notas del cliente
+            <textarea
+              rows={3}
+              value={clientForm.notes}
+              onChange={(event) => setClientForm((current) => ({ ...current, notes: event.target.value }))}
+              placeholder="Preferencias, contexto comercial o datos útiles"
+            />
+          </label>
+        </>
+      )}
       <label>
         Tipo de evento
         <input
