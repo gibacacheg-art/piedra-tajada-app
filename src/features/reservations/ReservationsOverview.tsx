@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, statusLabel } from "@/lib/format";
 import { supabase } from "@/lib/supabase";
 import type { Event, EventRequest } from "@/types/database";
+import { RequestForm } from "@/features/requests/RequestForm";
 
 type ReservationRequest = EventRequest & {
   clients?: {
@@ -27,6 +29,7 @@ type ReservationEvent = Event & {
 };
 
 type ReservationTab = "course" | "events" | "archived";
+type ReservationQuickView = "commercial" | "pre-reserved" | "confirmed" | "executed" | "cancelled" | "archived";
 
 function requestNextStep(status: string) {
   if (status === "request_received") return "Preparar cotización";
@@ -40,60 +43,70 @@ function eventClosureLabel(status: string, balance: number) {
   if (status === "cancelled") return "Cancelada";
   if (status === "executed" && balance > 0) return "Realizada con cierre pendiente";
   if (status === "executed" && balance <= 0) return "Cerrada";
-  return "En operación";
+  return "En coordinación";
 }
 
 export function ReservationsOverview() {
   const { canAccess, hasRole } = useAuth();
+  const searchParams = useSearchParams();
   const [requests, setRequests] = useState<ReservationRequest[]>([]);
   const [events, setEvents] = useState<ReservationEvent[]>([]);
   const [eventBalances, setEventBalances] = useState<Record<string, number>>({});
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState<ReservationTab>(canAccess("/requests") ? "course" : "events");
   const [message, setMessage] = useState("");
+  const [showNewReservationForm, setShowNewReservationForm] = useState(false);
 
   const canSeeRequests = canAccess("/requests");
   const isReadOnlyViewer = hasRole("consulta_disponibilidad");
 
-  useEffect(() => {
-    async function loadReservations() {
-      const [requestsResponse, eventsResponse, paymentsResponse] = await Promise.all([
-        canSeeRequests
-          ? supabase
-              .from("event_requests")
-              .select("*, clients(full_name, company_name), venues_spaces(name)")
-              .order("tentative_date", { ascending: true })
-          : Promise.resolve({ data: [], error: null }),
-        supabase
-          .from("events")
-          .select("*, clients(full_name, company_name)")
-          .order("event_date", { ascending: true }),
-        supabase.from("payments").select("event_id, amount, status")
-      ]);
+  async function loadReservations() {
+    const [requestsResponse, eventsResponse, paymentsResponse] = await Promise.all([
+      canSeeRequests
+        ? supabase
+            .from("event_requests")
+            .select("*, clients(full_name, company_name), venues_spaces(name)")
+            .order("tentative_date", { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
+      supabase
+        .from("events")
+        .select("*, clients(full_name, company_name)")
+        .order("event_date", { ascending: true }),
+      supabase.from("payments").select("event_id, amount, status")
+    ]);
 
-      if (requestsResponse.error || eventsResponse.error || paymentsResponse.error) {
-        setMessage(
-          `No se pudo cargar reservas: ${
-            requestsResponse.error?.message || eventsResponse.error?.message || paymentsResponse.error?.message || "Error desconocido"
-          }`
-        );
-        return;
-      }
-
-      setRequests((requestsResponse.data ?? []) as ReservationRequest[]);
-      setEvents((eventsResponse.data ?? []) as ReservationEvent[]);
-      const nextBalances = (paymentsResponse.data ?? []).reduce<Record<string, number>>((accumulator, payment) => {
-        if (!payment.event_id) return accumulator;
-        if (payment.status !== "pending" && payment.status !== "overdue") return accumulator;
-        accumulator[payment.event_id] = (accumulator[payment.event_id] ?? 0) + Number(payment.amount || 0);
-        return accumulator;
-      }, {});
-      setEventBalances(nextBalances);
-      setMessage("");
+    if (requestsResponse.error || eventsResponse.error || paymentsResponse.error) {
+      setMessage(
+        `No se pudo cargar reservas: ${
+          requestsResponse.error?.message || eventsResponse.error?.message || paymentsResponse.error?.message || "Error desconocido"
+        }`
+      );
+      return;
     }
 
+    setRequests((requestsResponse.data ?? []) as ReservationRequest[]);
+    setEvents((eventsResponse.data ?? []) as ReservationEvent[]);
+    const nextBalances = (paymentsResponse.data ?? []).reduce<Record<string, number>>((accumulator, payment) => {
+      if (!payment.event_id) return accumulator;
+      if (payment.status !== "pending" && payment.status !== "overdue") return accumulator;
+      accumulator[payment.event_id] = (accumulator[payment.event_id] ?? 0) + Number(payment.amount || 0);
+      return accumulator;
+    }, {});
+    setEventBalances(nextBalances);
+    setMessage("");
+  }
+
+  useEffect(() => {
     loadReservations();
   }, [canSeeRequests]);
+
+  useEffect(() => {
+    if (searchParams.get("new") === "1" && canSeeRequests && !isReadOnlyViewer) {
+      setShowNewReservationForm(true);
+      setActiveTab("course");
+    }
+  }, [canSeeRequests, isReadOnlyViewer, searchParams]);
 
   const confirmedRequestIds = useMemo(
     () => events.filter((event) => ["confirmed", "executed", "cancelled"].includes(event.status) && event.request_id).map((event) => event.request_id as string),
@@ -134,20 +147,31 @@ export function ReservationsOverview() {
         [request.event_type, request.clients?.full_name, request.clients?.company_name, request.status]
           .join(" ")
           .toLowerCase()
-          .includes(query.toLowerCase())
+          .includes(query.toLowerCase()) &&
+        (statusFilter === "all" ||
+          (statusFilter === "commercial_open" ? ["request_received", "quoted"].includes(request.status) : request.status === statusFilter))
       ),
-    [activeRequests, query]
+    [activeRequests, query, statusFilter]
   );
 
   const filteredEvents = useMemo(
     () =>
-      activeEvents.filter((event) =>
-        [event.event_name, event.event_type, event.clients?.full_name, event.clients?.company_name, event.status]
+      activeEvents.filter((event) => {
+        const closure = eventClosureLabel(
+          event.status,
+          Object.prototype.hasOwnProperty.call(eventBalances, event.id) ? eventBalances[event.id] : Number(event.balance_amount || 0)
+        );
+        const matchesQuery = [event.event_name, event.event_type, event.clients?.full_name, event.clients?.company_name, event.status, closure]
           .join(" ")
           .toLowerCase()
-          .includes(query.toLowerCase())
-      ),
-    [activeEvents, query]
+          .includes(query.toLowerCase());
+        const matchesStatus =
+          statusFilter === "all" ||
+          event.status === statusFilter ||
+          closure.toLowerCase().includes(statusFilter.toLowerCase());
+        return matchesQuery && matchesStatus;
+      }),
+    [activeEvents, eventBalances, query, statusFilter]
   );
 
   const filteredArchivedRequests = useMemo(
@@ -174,57 +198,149 @@ export function ReservationsOverview() {
 
   const metrics = useMemo(
     () => ({
-      requests: activeRequests.length,
-      readyToConfirm: activeRequests.filter((request) => ["quoted", "pre_reserved"].includes(request.status)).length,
-      events: activeEvents.filter((event) => ["confirmed", "executed"].includes(event.status)).length,
+      commercial: activeRequests.filter((request) => ["request_received", "quoted"].includes(request.status)).length,
+      preReserved: activeRequests.filter((request) => request.status === "pre_reserved").length,
+      confirmed: activeEvents.filter((event) => event.status === "confirmed").length,
+      executed: activeEvents.filter((event) => event.status === "executed").length,
+      cancelled: activeEvents.filter((event) => event.status === "cancelled").length,
       archived: archivedItems.requests.length + archivedItems.events.length
     }),
     [activeEvents, activeRequests, archivedItems.events.length, archivedItems.requests.length]
   );
+
+  function applyQuickView(view: ReservationQuickView) {
+    setQuery("");
+    setShowNewReservationForm(false);
+
+    if (view === "commercial") {
+      setActiveTab("course");
+      setStatusFilter("commercial_open");
+      return;
+    }
+
+    if (view === "pre-reserved") {
+      setActiveTab("course");
+      setStatusFilter("pre_reserved");
+      return;
+    }
+
+    if (view === "confirmed") {
+      setActiveTab("events");
+      setStatusFilter("confirmed");
+      return;
+    }
+
+    if (view === "executed") {
+      setActiveTab("events");
+      setStatusFilter("executed");
+      return;
+    }
+
+    if (view === "cancelled") {
+      setActiveTab("events");
+      setStatusFilter("cancelled");
+      return;
+    }
+
+    setActiveTab("archived");
+    setStatusFilter("all");
+  }
 
   return (
     <>
       <PageHeader
         eyebrow="Gestión principal"
         title="Reservas"
-        description="La entrada madre del caso: aquí sigues la reserva desde el primer contacto hasta su operación y cierre."
+        description="La entrada madre real del caso: aquí nace la reserva, aquí se sigue el tramo comercial y desde aquí se entiende cuándo pasa a operación."
       />
 
-      <section className="grid-4" style={{ marginBottom: 14 }}>
-        <article className={`stat-card${metrics.requests > 0 ? " is-warning" : ""}`}>
-          <span>Casos activos</span>
-          <strong>{metrics.requests}</strong>
-        </article>
-        <article className={`stat-card${metrics.readyToConfirm > 0 ? " is-warning" : ""}`}>
-          <span>Listos para confirmar</span>
-          <strong>{metrics.readyToConfirm}</strong>
-        </article>
-        <article className="stat-card">
-          <span>En operación</span>
-          <strong>{metrics.events}</strong>
-        </article>
-        <article className="stat-card">
+      <section className="grid-3" style={{ marginBottom: 14 }}>
+        <button
+          className={`stat-card${metrics.commercial > 0 ? " is-warning" : ""}`}
+          type="button"
+          onClick={() => applyQuickView("commercial")}
+          style={{ textAlign: "left" }}
+        >
+          <span>Nuevas / cotizando</span>
+          <strong>{metrics.commercial}</strong>
+        </button>
+        <button
+          className={`stat-card${metrics.preReserved > 0 ? " is-warning" : ""}`}
+          type="button"
+          onClick={() => applyQuickView("pre-reserved")}
+          style={{ textAlign: "left" }}
+        >
+          <span>Pre-reservas</span>
+          <strong>{metrics.preReserved}</strong>
+        </button>
+        <button className="stat-card" type="button" onClick={() => applyQuickView("confirmed")} style={{ textAlign: "left" }}>
+          <span>Confirmadas</span>
+          <strong>{metrics.confirmed}</strong>
+        </button>
+        <button className="stat-card" type="button" onClick={() => applyQuickView("executed")} style={{ textAlign: "left" }}>
+          <span>Realizadas</span>
+          <strong>{metrics.executed}</strong>
+        </button>
+        <button className="stat-card" type="button" onClick={() => applyQuickView("cancelled")} style={{ textAlign: "left" }}>
+          <span>Canceladas</span>
+          <strong>{metrics.cancelled}</strong>
+        </button>
+        <button className="stat-card" type="button" onClick={() => applyQuickView("archived")} style={{ textAlign: "left" }}>
           <span>Archivados</span>
           <strong>{metrics.archived}</strong>
-        </article>
+        </button>
       </section>
 
       <section className="panel">
         <div className="detail-copy" style={{ marginBottom: 14 }}>
           <h2>Cómo seguir el caso</h2>
           <p>
-            Usa esta vista como entrada principal. Mientras la reserva no esté confirmada, el seguimiento vive aquí. Cuando se confirma,
-            el caso pasa a operación sin cambiar de lógica.
+            Usa esta vista como puerta principal. El cliente entra aquí, la reserva se crea aquí y el caso solo pasa a operación cuando ya fue confirmado.
           </p>
         </div>
+        {canSeeRequests && !isReadOnlyViewer ? (
+          <div className="panel" style={{ marginBottom: 14 }}>
+            <div className="list-item-header">
+              <div>
+                <h2>Nueva reserva</h2>
+                <p className="muted">Empieza siempre aquí el caso nuevo, con cliente existente o creando uno nuevo en el mismo flujo.</p>
+              </div>
+              <button
+                className={showNewReservationForm ? "secondary-button" : "primary-button"}
+                type="button"
+                onClick={() => setShowNewReservationForm((current) => !current)}
+              >
+                {showNewReservationForm ? "Ocultar formulario" : "Crear nueva reserva"}
+              </button>
+            </div>
+            {showNewReservationForm ? (
+              <div style={{ marginTop: 14 }}>
+                <RequestForm
+                  embedded
+                  onCreated={async () => {
+                    await loadReservations();
+                    setShowNewReservationForm(false);
+                    setActiveTab("course");
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <div className="toolbar">
           <input placeholder="Buscar por cliente, empresa, tipo o nombre del evento" value={query} onChange={(event) => setQuery(event.target.value)} />
           <div className="button-row">
-            {canSeeRequests && !isReadOnlyViewer && (
-              <Link className="primary-button" href="/requests/new">
-                Nueva reserva
-              </Link>
-            )}
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="all">Todos los estados</option>
+              <option value="commercial_open">Nuevas / cotizando</option>
+              <option value="request_received">Nueva solicitud</option>
+              <option value="quoted">Cotizando / enviada</option>
+              <option value="pre_reserved">Pre-reserva</option>
+              <option value="confirmed">Confirmada</option>
+              <option value="executed">Realizada</option>
+              <option value="cancelled">Cancelada</option>
+              <option value="cerrada">Cerrada</option>
+            </select>
             <Link className="secondary-button" href="/calendar">
               Ver calendario
             </Link>
@@ -273,6 +389,10 @@ export function ReservationsOverview() {
                   <div className="meta-block">
                     <span>Espacio</span>
                     {request.venues_spaces?.name ?? "Sin bloqueo"}
+                  </div>
+                  <div className="meta-block">
+                    <span>Estado visible</span>
+                    {statusLabel(request.status)}
                   </div>
                   <div className="meta-block">
                     <span>Próximo paso</span>
@@ -336,6 +456,16 @@ export function ReservationsOverview() {
                       event.status,
                       Object.prototype.hasOwnProperty.call(eventBalances, event.id) ? eventBalances[event.id] : Number(event.balance_amount || 0)
                     )}
+                  </div>
+                  <div className="meta-block">
+                    <span>Próxima acción</span>
+                    {event.status === "confirmed"
+                      ? "Coordinar y cobrar"
+                      : event.status === "executed"
+                        ? (Object.prototype.hasOwnProperty.call(eventBalances, event.id) ? eventBalances[event.id] : Number(event.balance_amount || 0)) > 0
+                          ? "Cerrar saldo pendiente"
+                          : "Caso listo para cierre"
+                        : "Revisar caso"}
                   </div>
                 </div>
                 <div className="button-row" style={{ marginTop: 12 }}>

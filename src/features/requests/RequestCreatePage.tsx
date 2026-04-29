@@ -9,8 +9,8 @@ export function RequestCreatePage() {
     <>
       <PageHeader
         eyebrow="Ventas"
-        title="Nueva solicitud de evento"
-        description="Crea una nueva solicitud en una página separada para que el ingreso comercial sea más limpio y enfocado."
+        title="Nueva reserva"
+        description="Entrada secundaria de apoyo. El camino madre del caso ahora parte desde Reservas."
       />
 
       <section className="content-grid">
@@ -20,12 +20,12 @@ export function RequestCreatePage() {
           <h2>Qué sigue después</h2>
           <div className="dashboard-list">
             <article className="dashboard-mini-item">
-              <strong>1. Valorar servicios desde el inicio</strong>
-              <p className="muted">Ya en esta pantalla puedes marcar servicios, asignarles valor o dejarlos sin costo para crear la cotización base.</p>
+              <strong>1. La entrada principal vive en Reservas</strong>
+              <p className="muted">Si quieres seguir el caso desde su origen natural, vuelve a Reservas y crea la reserva desde ahí.</p>
             </article>
             <article className="dashboard-mini-item">
               <strong>2. Hacer seguimiento</strong>
-              <p className="muted">Desde la ficha de la solicitud podrás asignar responsable comercial y registrar el avance del cierre.</p>
+              <p className="muted">Desde la ficha de la reserva podrás asignar responsable comercial y registrar el avance del cierre.</p>
             </article>
             <article className="dashboard-mini-item">
               <strong>3. Pasar a evento</strong>
@@ -34,8 +34,11 @@ export function RequestCreatePage() {
           </div>
 
           <div className="button-row" style={{ marginTop: 14 }}>
+            <Link className="primary-button" href="/reservations?new=1">
+              Ir a Reservas
+            </Link>
             <Link className="secondary-button" href="/requests">
-              Volver al listado
+              Ver seguimiento comercial
             </Link>
           </div>
         </section>

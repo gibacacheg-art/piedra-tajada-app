@@ -266,8 +266,8 @@ export function RequestList() {
               </Link>
             ) : null}
             {canCreateRequests ? (
-              <Link className="primary-button" href="/requests/new">
-                Nueva reserva
+              <Link className="secondary-button" href="/reservations?new=1">
+                Crear desde Reservas
               </Link>
             ) : null}
           </div>

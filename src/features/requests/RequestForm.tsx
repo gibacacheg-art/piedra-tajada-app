@@ -51,7 +51,7 @@ const initialClientForm = {
   notes: ""
 };
 
-export function RequestForm({ onCreated }: { onCreated?: () => Promise<void> }) {
+export function RequestForm({ onCreated, embedded = false }: { onCreated?: () => Promise<void>; embedded?: boolean }) {
   const [clients, setClients] = useState<Client[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -244,8 +244,8 @@ export function RequestForm({ onCreated }: { onCreated?: () => Promise<void> }) 
   }
 
   return (
-    <form className="panel" onSubmit={createRequest}>
-      <h2>Nueva solicitud</h2>
+    <form className={embedded ? "edit-form" : "panel"} onSubmit={createRequest}>
+      {!embedded ? <h2>Nueva solicitud</h2> : null}
       <div className="button-row" style={{ marginBottom: 6 }}>
         <button
           className={!creatingClientInline ? "primary-button" : "secondary-button"}
@@ -510,7 +510,7 @@ export function RequestForm({ onCreated }: { onCreated?: () => Promise<void> }) 
         <button className="primary-button" disabled={Boolean(createdRequestId)} type="submit">
           {createdRequestId ? "Solicitud ya creada" : "Crear solicitud"}
         </button>
-        {!onCreated ? (
+        {!onCreated && !embedded ? (
           <Link className="secondary-button" href="/requests">
             Volver al listado
           </Link>

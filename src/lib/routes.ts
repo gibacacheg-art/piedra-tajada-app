@@ -12,12 +12,12 @@ const readOnlyViewerRoles: RoleCode[] = ["consulta_disponibilidad"];
 const operationalAndViewerRoles: RoleCode[] = [...operationalRoles, ...readOnlyViewerRoles];
 
 export const appRoutes: RouteRule[] = [
-  { href: "/dashboard", label: "Inicio", allowedRoles: operationalAndViewerRoles },
   { href: "/reservations", label: "Reservas", allowedRoles: operationalAndViewerRoles },
   { href: "/calendar", label: "Calendario", allowedRoles: allRoles },
+  { href: "/dashboard", label: "Resumen general", allowedRoles: operationalAndViewerRoles },
   { href: "/clients", label: "Clientes", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "consulta_disponibilidad"] },
-  { href: "/requests", label: "Solicitudes", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "consulta_disponibilidad"] },
-  { href: "/events", label: "Eventos", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "responsable_area", "consulta_disponibilidad"] },
+  { href: "/requests", label: "Seguimiento comercial", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "consulta_disponibilidad"] },
+  { href: "/events", label: "Operación", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "responsable_area", "consulta_disponibilidad"] },
   { href: "/payments", label: "Cobros y facturación", allowedRoles: ["admin_general", "ventas", "coordinador_evento", "consulta_disponibilidad"] },
   { href: "/documents", label: "Documentos", allowedRoles: operationalAndViewerRoles },
   { href: "/admin", label: "Administración", allowedRoles: operationalRoles },
@@ -62,5 +62,5 @@ export function defaultPathForRoles(userRoles: string[]) {
     return "/calendar";
   }
 
-  return "/dashboard";
+  return "/reservations";
 }
